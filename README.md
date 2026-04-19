@@ -22,6 +22,6 @@ This project does not aim to create a fully featured alternative do Obsidian, ju
 
 ## Todo
 
-- Translations.
-- About menu (yeah).
-- Search inside notes.
+- [ ] Translations
+- [x] About menu
+- [ ] Search inside notes.

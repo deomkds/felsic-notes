@@ -407,6 +407,9 @@ class MainWindow(QMainWindow):
         self.toggle_hide_empty_action.setCheckable(True)
         self.toggle_hide_empty_action.triggered.connect(self.toggle_hide_empty_folders)
         
+        self.about_action = QAction("About", self)
+        self.about_action.triggered.connect(self.show_about)
+        
         self.available_tools_catalog = {
             "new_file": {"name": "New File", "action": self.new_action},
             "open_file": {"name": "Open File...", "action": self.open_action},
@@ -428,6 +431,7 @@ class MainWindow(QMainWindow):
             "preview": {"name": "Toggle Preview", "action": self.toggle_preview_action},
             "wrap_text": {"name": "Toggle Wrap", "action": self.toggle_wrap_action},
             "hide_empty_folders": {"name": "Hide Empty Folders", "action": self.toggle_hide_empty_action},
+            "about": {"name": "About", "action": self.about_action},
             "spacer": {"name": "Space (Align Right)", "action": None},
             "separator": {"name": "Vertical Separator", "action": None}
         }
@@ -501,6 +505,10 @@ class MainWindow(QMainWindow):
         customize_action = QAction("Customize Toolbar...", self)
         customize_action.triggered.connect(self.customize_toolbar)
         view_menu.addAction(customize_action)
+        
+        # Help Menu
+        help_menu = menu_bar.addMenu("Help")
+        help_menu.addAction(self.about_action)
         
         # Window attributes
         self.resize(800, 600)
@@ -683,6 +691,12 @@ class MainWindow(QMainWindow):
     def toggle_hide_empty_folders(self, checked):
         self.proxy_model.setHideEmptyFolders(checked)
         self._save_workspace_config()
+
+    def show_about(self):
+        text = """<h3>Felsic Notes</h3>
+        <p>A fast, portable, and lightweight Markdown note-taking app.</p>
+        <p>Built with PyQt6 and Love.</p>"""
+        QMessageBox.about(self, "About Felsic Notes", text)
 
     def sync_tree_selection(self, path=None):
         if self.current_file:

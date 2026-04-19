@@ -738,7 +738,6 @@ class MainWindow(QMainWindow):
         self.title_box.blockSignals(False)
         
         self.editor.document().setModified(False)
-        self._save_workspace_config()
         # Se estivermos no modo Preview, atualizamos a renderização para a nova nota
         if self.stacked_widget.currentIndex() == 1:
             self.toggle_preview(True)

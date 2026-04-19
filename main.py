@@ -12,6 +12,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QAction, QFont, QFileSystemModel, QIcon, QPdfWriter, QTextDocument, QColor
 from PyQt6.QtCore import Qt, QDir, QSettings, QSortFilterProxyModel, QRegularExpression, QByteArray
+import os
+# Suppress Qt font database warnings (e.g. OpenType support missing for "LastResort", script 18)
+os.environ["QT_LOGGING_RULES"] = "qt.text.font.*=false;qt.qpa.fonts=false"
 
 class FileFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
@@ -296,8 +299,8 @@ class MainWindow(QMainWindow):
         # Page 0: Pure Text Editor
         self.editor = QPlainTextEdit()
         font = QFont()
-        # Explicit priority list for Linux/Cross-platform to avoid "LastResort" script 18 errors
-        font.setFamilies(["DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", "Monospace"])
+        # Explicit priority list for Linux/Cross-platform including Native Emoji tables
+        font.setFamilies(["DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", "Monospace", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji"])
         font.setStyleHint(QFont.StyleHint.TypeWriter)
         self.editor.setFont(font)
         

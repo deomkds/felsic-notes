@@ -283,7 +283,9 @@ class MainWindow(QMainWindow):
         
         # Page 0: Pure Text Editor
         self.editor = QPlainTextEdit()
-        font = QFont("Monospace")
+        font = QFont()
+        # Explicit priority list for Linux/Cross-platform to avoid "LastResort" script 18 errors
+        font.setFamilies(["DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", "Monospace"])
         font.setStyleHint(QFont.StyleHint.TypeWriter)
         self.editor.setFont(font)
         

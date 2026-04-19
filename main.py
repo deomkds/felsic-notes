@@ -695,7 +695,8 @@ class MainWindow(QMainWindow):
     def show_about(self):
         text = """<h3>Felsic Notes</h3>
         <p>A fast, portable, and lightweight Markdown note-taking app.</p>
-        <p>Built with PyQt6 and Love.</p>"""
+        <p>Built with PyQt6 and copious amounts of AI.</p>
+        <p><a href="https://github.com/deomkds/felsic-notes">GitHub Repository</a></p>"""
         QMessageBox.about(self, "About Felsic Notes", text)
 
     def sync_tree_selection(self, path=None):

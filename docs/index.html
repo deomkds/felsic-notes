@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Felsic Notes | Simple, Fast, Portable</title>
+    <link rel="icon" type="image/png" href="icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -38,8 +39,7 @@
     <nav class="fixed w-full z-50 glass-effect">
         <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <div class="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold">F
-                </div>
+                <img src="icon.png" alt="Felsic Notes Logo" class="w-8 h-8 rounded-lg">
                 <span class="text-xl font-bold tracking-tight">Felsic Notes</span>
             </div>
             <div class="hidden md:flex gap-8 text-sm font-medium text-slate-600">
@@ -86,12 +86,8 @@
             <!-- Interface Mockup -->
             <div class="relative max-w-5xl mx-auto">
                 <div class="bg-slate-200 rounded-2xl p-2 shadow-2xl">
-                    <div
-                        class="bg-white rounded-xl overflow-hidden shadow-inner aspect-[16/10] flex items-center justify-center text-slate-300">
-                        <div class="flex flex-col items-center">
-                            <i data-lucide="layout" class="w-16 h-16 mb-4"></i>
-                            <span class="text-sm uppercase tracking-widest"></span>
-                        </div>
+                    <div class="bg-white rounded-xl overflow-hidden shadow-inner">
+                        <img src="window.png" alt="Felsic Notes App Window" class="w-full h-auto block">
                     </div>
                 </div>
                 <!-- Decoration -->
@@ -251,28 +247,30 @@
             <p class="text-slate-600 mb-12">Download the version for your OS and point it to your notes folder.</p>
 
             <div class="grid sm:grid-cols-3 gap-4">
-                <button
+                <a href="#download-windows"
                     class="flex flex-col items-center gap-3 p-6 border border-slate-200 rounded-2xl hover:border-slate-900 transition-all group">
                     <i data-lucide="monitor" class="w-10 h-10 group-hover:scale-110 transition-transform"></i>
                     <span class="font-bold">Windows</span>
                     <span class="text-xs text-slate-400">Portable .exe</span>
-                </button>
-                <button
+                </a>
+                <a href="#download-macos"
                     class="flex flex-col items-center gap-3 p-6 border border-slate-200 rounded-2xl hover:border-slate-900 transition-all group">
                     <i data-lucide="apple" class="w-10 h-10 group-hover:scale-110 transition-transform"></i>
                     <span class="font-bold">macOS</span>
                     <span class="text-xs text-slate-400">DMG / Apple Silicon</span>
-                </button>
-                <button
+                </a>
+                <a href="#download-linux"
                     class="flex flex-col items-center gap-3 p-6 border border-slate-200 rounded-2xl hover:border-slate-900 transition-all group">
                     <i data-lucide="terminal" class="w-10 h-10 group-hover:scale-110 transition-transform"></i>
                     <span class="font-bold">Linux</span>
                     <span class="text-xs text-slate-400">AppImage / Tar.gz</span>
-                </button>
+                </a>
             </div>
 
             <p class="mt-12 text-sm text-slate-400">
-                Felsic Notes is free software. <a href="#" class="underline hover:text-slate-600">Read the license
+                Felsic Notes is free software. <a
+                    href="https://github.com/deomkds/felsic-notes/tree/main?tab=GPL-3.0-1-ov-file#readme"
+                    class="underline hover:text-slate-600">Read the license
                     here.</a>
             </p>
         </div>
@@ -282,12 +280,11 @@
     <footer class="py-12 border-t border-slate-100">
         <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
             <div class="flex items-center gap-2">
-                <div class="w-6 h-6 bg-slate-900 rounded flex items-center justify-center text-white text-xs font-bold">
-                    F</div>
+                <img src="icon.png" alt="Felsic Notes Logo" class="w-6 h-6 rounded">
                 <span class="font-bold">Felsic Notes</span>
             </div>
             <p class="text-sm text-slate-500">
-                © 2024 Felsic Notes Project. Built with Qt6 and Python.
+                © 2026 Felsic Notes. Built with love in Brazil 🇧🇷.
             </p>
             <div class="flex gap-6">
                 <a href="#" class="text-slate-400 hover:text-slate-900 transition-colors"><i data-lucide="twitter"

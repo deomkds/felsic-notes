@@ -1,7 +1,6 @@
 import sys
 import os
 import json
-import markdown
 import shutil
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPlainTextEdit, QFileDialog, QMessageBox,
@@ -11,7 +10,27 @@ from PyQt6.QtWidgets import (
     QPushButton, QAbstractItemView
 )
 from PyQt6.QtGui import QAction, QFont, QFileSystemModel, QIcon, QPdfWriter, QTextDocument, QColor
-from PyQt6.QtCore import Qt, QDir, QSettings, QSortFilterProxyModel, QRegularExpression, QByteArray
+from PyQt6.QtCore import Qt, QDir, QSettings, QSortFilterProxyModel, QRegularExpression, QByteArray, QThread, pyqtSignal, QTimer
+
+class WorkspaceIndexer(QThread):
+    finished_indexing = pyqtSignal(list)
+    
+    def __init__(self, root_path):
+        super().__init__()
+        self.root_path = root_path
+        
+    def run(self):
+        all_md = []
+        try:
+            for root, dirs, files in os.walk(self.root_path):
+                dirs[:] = [d for d in dirs if not d.startswith('.')]
+                for file in files:
+                    if file.endswith('.md'):
+                        full = os.path.join(root, file)
+                        all_md.append((full, file))
+        except Exception:
+            pass
+        self.finished_indexing.emit(all_md)
 
 class FileFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
@@ -22,41 +41,49 @@ class FileFilterProxyModel(QSortFilterProxyModel):
         
     def update_workspace_index(self, root_path):
         self._all_md_files = []
-        try:
-            for root, dirs, files in os.walk(root_path):
-                for f in files:
-                    if f.endswith('.md'):
-                        self._all_md_files.append(os.path.join(root, f))
-        except Exception:
-            pass
+        self._dir_match_cache.clear()
+        self.invalidateFilter()
+        
+        self.indexer = WorkspaceIndexer(root_path)
+        self.indexer.finished_indexing.connect(self._on_indexing_finished)
+        self.indexer.start()
+        
+    def _on_indexing_finished(self, md_files):
+        self._all_md_files = md_files
         self._dir_match_cache.clear()
         self.invalidateFilter()
 
     def add_to_index(self, filepath):
-        if filepath not in self._all_md_files:
-            self._all_md_files.append(filepath)
+        entry = (filepath, os.path.basename(filepath))
+        if entry not in self._all_md_files:
+            self._all_md_files.append(entry)
             self._dir_match_cache.clear()
             self.invalidateFilter()
             
     def remove_from_index(self, filepath):
-        if filepath in self._all_md_files:
-            self._all_md_files.remove(filepath)
-            self._dir_match_cache.clear()
-            self.invalidateFilter()
+        for i, (path, _) in enumerate(self._all_md_files):
+            if path == filepath:
+                self._all_md_files.pop(i)
+                self._dir_match_cache.clear()
+                self.invalidateFilter()
+                break
             
     def rename_in_index(self, old_path, new_path):
-        if old_path in self._all_md_files:
-            self._all_md_files.remove(old_path)
-            self._all_md_files.append(new_path)
-            self._dir_match_cache.clear()
-            self.invalidateFilter()
+        for i, (path, _) in enumerate(self._all_md_files):
+            if path == old_path:
+                self._all_md_files[i] = (new_path, os.path.basename(new_path))
+                self._dir_match_cache.clear()
+                self.invalidateFilter()
+                break
 
     def rename_dir_in_index(self, old_dir, new_dir):
         old_prefix = old_dir + os.sep
         changed = False
         for i in range(len(self._all_md_files)):
-            if self._all_md_files[i] == old_dir or self._all_md_files[i].startswith(old_prefix):
-                self._all_md_files[i] = self._all_md_files[i].replace(old_dir, new_dir, 1)
+            md_path, name = self._all_md_files[i]
+            if md_path == old_dir or md_path.startswith(old_prefix):
+                new_fpath = md_path.replace(old_dir, new_dir, 1)
+                self._all_md_files[i] = (new_fpath, name)
                 changed = True
         if changed:
             self._dir_match_cache.clear()
@@ -66,11 +93,12 @@ class FileFilterProxyModel(QSortFilterProxyModel):
         dead_prefix = dead_dir + os.sep
         new_files = []
         changed = False
-        for md_file in self._all_md_files:
-            if md_file == dead_dir or md_file.startswith(dead_prefix):
+        for entry in self._all_md_files:
+            md_path = entry[0]
+            if md_path == dead_dir or md_path.startswith(dead_prefix):
                 changed = True
             else:
-                new_files.append(md_file)
+                new_files.append(entry)
         if changed:
             self._all_md_files = new_files
             self._dir_match_cache.clear()
@@ -102,9 +130,8 @@ class FileFilterProxyModel(QSortFilterProxyModel):
         has_match = False
         path_prefix = path if path.endswith(os.sep) else path + os.sep
         
-        for md_file in self._all_md_files:
+        for md_file, name in self._all_md_files:
             if md_file == path or md_file.startswith(path_prefix):
-                name = os.path.basename(md_file)
                 if regex.pattern() == "" or regex.match(name).hasMatch():
                     has_match = True
                     break
@@ -280,6 +307,11 @@ class MainWindow(QMainWindow):
         left_container = QWidget()
         left_layout = QVBoxLayout(left_container)
         left_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.search_timer = QTimer()
+        self.search_timer.setSingleShot(True)
+        self.search_timer.setInterval(250)
+        self.search_timer.timeout.connect(self.apply_search)
         
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search notes...")
@@ -605,6 +637,7 @@ class MainWindow(QMainWindow):
         if checked:
             # Switch to Rendered HTML
             text = self.editor.toPlainText()
+            import markdown
             # Compile markdown
             html = markdown.markdown(text, extensions=['extra', 'nl2br'])
             # We add a bit of basic styling so it doesn't look totally raw
@@ -710,6 +743,10 @@ class MainWindow(QMainWindow):
             self.toggle_preview(True)
 
     def on_search_changed(self, text):
+        self.search_timer.start()
+
+    def apply_search(self):
+        text = self.search_box.text()
         regex = QRegularExpression(text, QRegularExpression.PatternOption.CaseInsensitiveOption)
         self.proxy_model.setFilterRegularExpression(regex)
 
@@ -1121,9 +1158,7 @@ class MainWindow(QMainWindow):
                 with open(filepath, 'w', encoding="utf-8") as f:
                     f.write("")
                 # Adiciona o novo arquivo criado no index de busca
-                self.proxy_model._all_md_files.append(filepath)
-                self.proxy_model._dir_match_cache.clear()
-                self.proxy_model.invalidateFilter()
+                self.proxy_model.add_to_index(filepath)
                 
                 if self.maybe_save():
                     self.load_file(filepath)
@@ -1143,9 +1178,7 @@ class MainWindow(QMainWindow):
             try:
                 os.makedirs(filepath)
                 # Adds the bare folder to the md index list so "Hide Empty Folders" doesn't swallow it instantly
-                self.proxy_model._all_md_files.append(filepath)
-                self.proxy_model._dir_match_cache.clear()
-                self.proxy_model.invalidateFilter()
+                self.proxy_model.add_to_index(filepath)
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Failed to create folder:\n{e}")
 
@@ -1228,6 +1261,7 @@ class MainWindow(QMainWindow):
                 title = "Untitled Note"
                 
             text = self.editor.toPlainText()
+            import markdown
             html = markdown.markdown(text, extensions=['extra', 'nl2br'])
             styled_html = f"""
             <style>

@@ -4,7 +4,7 @@ A no-frills note-taking application designed to be portable, lightweight and fas
 
 Built with Qt6, Python and copious amounts of AI, it emulates the feel of Obsidian but with a focus on simplicity and performance. Point it to a folder and start using.
 
-
+![Logo](window.png)
 
 This project does not aim to create a fully featured alternative do Obsidian, just a simple, fast and portable note-taking application for day to day usage.
 
@@ -15,13 +15,13 @@ This project does not aim to create a fully featured alternative do Obsidian, ju
 - Fast (opens and runs quickly).
 - Lightweight (uses less than 100MB of RAM).
 - Markdown support.
-- Manages local files inside a folder (no vendor lock-in, no proprietary vaults).
+- Manages local files inside a folder (no vendor lock-in and no proprietary vaults).
 - Super fast search.
 - Clean and simple interface.
 - Can work alongside Obsidian vaults (no interference).
 
 ## Todo
 
-Translations
-About menu (yeah)
-Search inside notes
+- Translations.
+- About menu (yeah).
+- Search inside notes.

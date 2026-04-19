@@ -12,9 +12,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QAction, QFont, QFileSystemModel, QIcon, QPdfWriter, QTextDocument, QColor
 from PyQt6.QtCore import Qt, QDir, QSettings, QSortFilterProxyModel, QRegularExpression, QByteArray
-import os
-# Suppress Qt font database warnings (e.g. OpenType support missing for "LastResort", script 18)
-os.environ["QT_LOGGING_RULES"] = "qt.text.font.*=false;qt.qpa.fonts=false"
 
 class FileFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
@@ -51,6 +48,31 @@ class FileFilterProxyModel(QSortFilterProxyModel):
         if old_path in self._all_md_files:
             self._all_md_files.remove(old_path)
             self._all_md_files.append(new_path)
+            self._dir_match_cache.clear()
+            self.invalidateFilter()
+
+    def rename_dir_in_index(self, old_dir, new_dir):
+        old_prefix = old_dir + os.sep
+        changed = False
+        for i in range(len(self._all_md_files)):
+            if self._all_md_files[i] == old_dir or self._all_md_files[i].startswith(old_prefix):
+                self._all_md_files[i] = self._all_md_files[i].replace(old_dir, new_dir, 1)
+                changed = True
+        if changed:
+            self._dir_match_cache.clear()
+            self.invalidateFilter()
+            
+    def remove_dir_from_index(self, dead_dir):
+        dead_prefix = dead_dir + os.sep
+        new_files = []
+        changed = False
+        for md_file in self._all_md_files:
+            if md_file == dead_dir or md_file.startswith(dead_prefix):
+                changed = True
+            else:
+                new_files.append(md_file)
+        if changed:
+            self._all_md_files = new_files
             self._dir_match_cache.clear()
             self.invalidateFilter()
 
@@ -299,8 +321,8 @@ class MainWindow(QMainWindow):
         # Page 0: Pure Text Editor
         self.editor = QPlainTextEdit()
         font = QFont()
-        # Explicit priority list for Linux/Cross-platform including Native Emoji tables
-        font.setFamilies(["DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", "Monospace", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji"])
+        # Explicit priority list for Linux/Cross-platform to avoid "LastResort" script 18 errors
+        font.setFamilies(["DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", "Monospace"])
         font.setStyleHint(QFont.StyleHint.TypeWriter)
         self.editor.setFont(font)
         
@@ -895,12 +917,41 @@ class MainWindow(QMainWindow):
             # Clicou nas pastas ou vazio
             if source_index.isValid() and self.file_model.isDir(source_index):
                 base_dir = self.file_model.filePath(source_index)
+                
+                new_note_action = QAction("New Note...", self)
+                new_note_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_note(d))
+                menu.addAction(new_note_action)
+                
+                menu.addSeparator()
+                
+                rename_dir_action = QAction("Rename Folder...", self)
+                rename_dir_action.triggered.connect(lambda checked=False, p=base_dir: self.rename_folder(p))
+                menu.addAction(rename_dir_action)
+                
+                move_dir_action = QAction("Move Folder To...", self)
+                move_dir_action.triggered.connect(lambda checked=False, p=base_dir: self.move_folder(p))
+                menu.addAction(move_dir_action)
+                
+                menu.addSeparator()
+                
+                expand_action = QAction("Expand All", self)
+                expand_action.triggered.connect(lambda checked=False, idx=proxy_index: self.tree_view.expandRecursively(idx))
+                menu.addAction(expand_action)
+                
+                collapse_action = QAction("Collapse All", self)
+                collapse_action.triggered.connect(lambda checked=False, idx=proxy_index: self.collapse_recursively(idx))
+                menu.addAction(collapse_action)
+                
+                menu.addSeparator()
+                
+                delete_dir_action = QAction("Delete Folder", self)
+                delete_dir_action.triggered.connect(lambda checked=False, p=base_dir: self.delete_folder(p))
+                menu.addAction(delete_dir_action)
             else:
                 base_dir = self.current_folder
-
-            new_note_action = QAction("New Note...", self)
-            new_note_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_note(d))
-            menu.addAction(new_note_action)
+                new_note_action = QAction("New Note...", self)
+                new_note_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_note(d))
+                menu.addAction(new_note_action)
         
         menu.exec(self.tree_view.viewport().mapToGlobal(position))
 
@@ -962,6 +1013,70 @@ class MainWindow(QMainWindow):
             shutil.copy2(source_path, dest_path)
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to duplicate note:\n{e}")
+
+    def rename_folder(self, source_path):
+        current_name = os.path.basename(source_path)
+        new_name, ok = QInputDialog.getText(self, "Rename Folder", "New Name:", text=current_name)
+        if ok and new_name.strip() and new_name != current_name:
+            new_name = new_name.strip()
+            dest_path = os.path.join(os.path.dirname(source_path), new_name)
+            if os.path.exists(dest_path):
+                QMessageBox.warning(self, "Error", "A folder with this name already exists.")
+                return
+            try:
+                os.rename(source_path, dest_path)
+                self.proxy_model.rename_dir_in_index(source_path, dest_path)
+                if self.current_file and (self.current_file == source_path or self.current_file.startswith(source_path + os.sep)):
+                    new_file_path = self.current_file.replace(source_path, dest_path, 1)
+                    self.set_current_document(new_file_path)
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Failed to rename folder:\n{e}")
+
+    def move_folder(self, source_path):
+        dest_folder = QFileDialog.getExistingDirectory(self, "Select Destination Folder", self.current_folder)
+        if dest_folder:
+            foldername = os.path.basename(source_path)
+            dest_path = os.path.join(dest_folder, foldername)
+            if os.path.exists(dest_path):
+                if dest_path == source_path: return
+                QMessageBox.warning(self, "Error", "A folder with this name already exists in the destination.")
+                return
+            try:
+                shutil.move(source_path, dest_path)
+                self.proxy_model.rename_dir_in_index(source_path, dest_path)
+                if self.current_file and (self.current_file == source_path or self.current_file.startswith(source_path + os.sep)):
+                    new_file_path = self.current_file.replace(source_path, dest_path, 1)
+                    self.set_current_document(new_file_path)
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Failed to move folder:\n{e}")
+
+    def collapse_recursively(self, proxy_index):
+        if not proxy_index.isValid(): return
+        self.tree_view.collapse(proxy_index)
+        model = proxy_index.model()
+        rows = model.rowCount(proxy_index)
+        for i in range(rows):
+            child_idx = model.index(i, 0, proxy_index)
+            if model.hasChildren(child_idx):
+                self.collapse_recursively(child_idx)
+
+    def delete_folder(self, source_path):
+        answer = QMessageBox.warning(
+            self, "Confirm Delete", 
+            f"Are you sure you want to permanently delete this folder and ALL ITS CONTENTS:\n{os.path.basename(source_path)}?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            try:
+                shutil.rmtree(source_path)
+                self.proxy_model.remove_dir_from_index(source_path)
+                if self.current_file and (self.current_file == source_path or self.current_file.startswith(source_path + os.sep)):
+                    self.editor.clear()
+                    self.title_box.clear()
+                    self.set_current_document(None)
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Failed to delete folder:\n{e}")
 
     def delete_note(self, source_path):
         answer = QMessageBox.warning(

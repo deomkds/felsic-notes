@@ -922,6 +922,10 @@ class MainWindow(QMainWindow):
                 new_note_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_note(d))
                 menu.addAction(new_note_action)
                 
+                new_folder_action = QAction("New Folder...", self)
+                new_folder_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_folder(d))
+                menu.addAction(new_folder_action)
+                
                 menu.addSeparator()
                 
                 rename_dir_action = QAction("Rename Folder...", self)
@@ -952,6 +956,10 @@ class MainWindow(QMainWindow):
                 new_note_action = QAction("New Note...", self)
                 new_note_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_note(d))
                 menu.addAction(new_note_action)
+                
+                new_folder_action = QAction("New Folder...", self)
+                new_folder_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_folder(d))
+                menu.addAction(new_folder_action)
         
         menu.exec(self.tree_view.viewport().mapToGlobal(position))
 
@@ -1106,19 +1114,36 @@ class MainWindow(QMainWindow):
             filepath = os.path.join(base_dir, filename)
             
             if os.path.exists(filepath):
-                QMessageBox.warning(self, "Error", "A file with this name already exists in the selected folder.")
+                QMessageBox.warning(self, "Error", "A file with this name already exists.")
                 return
                 
             try:
-                # Create an empty file
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    f.write('')
-                    
-                # Open the new note directly
+                with open(filepath, 'w', encoding="utf-8") as f:
+                    f.write("")
+                # Adiciona o novo arquivo criado no index de busca
+                self.proxy_model._all_md_files.append(filepath)
+                self.proxy_model._dir_match_cache.clear()
+                self.proxy_model.invalidateFilter()
+                
                 if self.maybe_save():
                     self.load_file(filepath)
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Failed to create note:\n{e}")
+
+    def create_new_folder(self, base_dir):
+        text, ok = QInputDialog.getText(self, "New Folder", "Folder Name:")
+        if ok and text.strip():
+            foldername = text.strip()
+            filepath = os.path.join(base_dir, foldername)
+            
+            if os.path.exists(filepath):
+                QMessageBox.warning(self, "Error", "A folder with this name already exists.")
+                return
+                
+            try:
+                os.makedirs(filepath)
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Failed to create folder:\n{e}")
 
     def on_tree_clicked(self, proxy_index):
         source_index = self.proxy_model.mapToSource(proxy_index)

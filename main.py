@@ -1142,6 +1142,10 @@ class MainWindow(QMainWindow):
                 
             try:
                 os.makedirs(filepath)
+                # Adds the bare folder to the md index list so "Hide Empty Folders" doesn't swallow it instantly
+                self.proxy_model._all_md_files.append(filepath)
+                self.proxy_model._dir_match_cache.clear()
+                self.proxy_model.invalidateFilter()
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Failed to create folder:\n{e}")
 

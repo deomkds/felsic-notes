@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QAbstractItemView
 )
 from PyQt6.QtGui import QAction, QFont, QFileSystemModel, QIcon, QPdfWriter, QTextDocument, QColor
-from PyQt6.QtCore import Qt, QDir, QSettings, QSortFilterProxyModel, QRegularExpression
+from PyQt6.QtCore import Qt, QDir, QSettings, QSortFilterProxyModel, QRegularExpression, QByteArray
 
 class FileFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
@@ -227,6 +227,18 @@ class MainWindow(QMainWindow):
         self.settings = QSettings("Felsic", "FelsicNotes")
         
         self.init_ui()
+        
+        geom = self.settings.value("geometry")
+        if geom is not None:
+            self.restoreGeometry(geom)
+            
+        state = self.settings.value("windowState")
+        if state is not None:
+            self.restoreState(state)
+            
+        splitter_state = self.settings.value("splitterState")
+        if splitter_state is not None:
+            self.splitter.restoreState(splitter_state)
         
         # Restore last opened workspace if it exists
         last_workspace = self.settings.value("last_workspace", "")
@@ -748,6 +760,14 @@ class MainWindow(QMainWindow):
             self.toggle_hide_empty_action.setChecked(hide_empty)
             self.proxy_model.setHideEmptyFolders(hide_empty)
                 
+            window_geometry = data.get("window_geometry")
+            if window_geometry:
+                self.restoreGeometry(QByteArray.fromHex(window_geometry.encode('utf-8')))
+
+            splitter_state = data.get("splitter_state")
+            if splitter_state:
+                self.splitter.restoreState(QByteArray.fromHex(splitter_state.encode('utf-8')))
+                
             last_file = data.get("last_file")
             # Only reopen if file resides strictly inside the workspace and still exists
             if last_file and os.path.exists(last_file) and last_file.startswith(self.current_folder):
@@ -779,6 +799,8 @@ class MainWindow(QMainWindow):
             data["toolbar_layout"] = self.current_toolbar_layout
             
         data["hide_empty_folders"] = self.toggle_hide_empty_action.isChecked()
+        data["window_geometry"] = self.saveGeometry().toHex().data().decode('utf-8')
+        data["splitter_state"] = self.splitter.saveState().toHex().data().decode('utf-8')
             
         try:
             with open(config_path, "w", encoding="utf-8") as f:
@@ -1101,12 +1123,20 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         if self.maybe_save():
             self._save_workspace_config()
+            self.settings.setValue("geometry", self.saveGeometry())
+            self.settings.setValue("windowState", self.saveState())
+            self.settings.setValue("splitterState", self.splitter.saveState())
             event.accept()
         else:
             event.ignore()
 
 def main():
     app = QApplication(sys.argv)
+    
+    icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
+    if os.path.exists(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
+        
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

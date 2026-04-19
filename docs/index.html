@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Felsic Notes | Simple, Fast, Portable</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .hero-gradient {
+            background: radial-gradient(circle at top right, #f0f4ff 0%, #ffffff 100%);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+
+<body class="bg-white text-slate-900">
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 glass-effect">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold">F
+                </div>
+                <span class="text-xl font-bold tracking-tight">Felsic Notes</span>
+            </div>
+            <div class="hidden md:flex gap-8 text-sm font-medium text-slate-600">
+                <a href="#features" class="hover:text-slate-900 transition-colors">Features</a>
+                <a href="#performance" class="hover:text-slate-900 transition-colors">Performance</a>
+                <a href="#download" class="hover:text-slate-900 transition-colors">Download</a>
+            </div>
+            <a href="#download"
+                class="bg-slate-900 text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-slate-800 transition-all">
+                Get Started
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="relative pt-32 pb-20 hero-gradient overflow-hidden">
+        <div class="max-w-6xl mx-auto px-6 text-center">
+            <div
+                class="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-slate-500 uppercase bg-slate-100 rounded-full">
+                Built with Qt6 & Python
+            </div>
+            <h1 class="text-5xl md:text-7xl font-bold tracking-tight mb-6 text-slate-900">
+                No-frills notes.<br />
+                <span class="text-slate-500">Pure productivity.</span>
+            </h1>
+            <p class="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+                A note-taking application designed to be portable, lightweight, and fast. Manage your local Markdown
+                files without any complications.
+            </p>
+
+            <div class="flex flex-col sm:flex-row justify-center gap-4 mb-16">
+                <a href="#download"
+                    class="flex items-center justify-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-slate-800 transition-all">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                    Free Download
+                </a>
+                <a href="https://github.com" target="_blank"
+                    class="flex items-center justify-center gap-2 bg-white border border-slate-200 px-8 py-4 rounded-xl font-bold text-lg hover:bg-slate-50 transition-all">
+                    <i data-lucide="github" class="w-5 h-5"></i>
+                    View on GitHub
+                </a>
+            </div>
+
+            <!-- Interface Mockup -->
+            <div class="relative max-w-5xl mx-auto">
+                <div class="bg-slate-200 rounded-2xl p-2 shadow-2xl">
+                    <div
+                        class="bg-white rounded-xl overflow-hidden shadow-inner aspect-[16/10] flex items-center justify-center text-slate-300">
+                        <div class="flex flex-col items-center">
+                            <i data-lucide="layout" class="w-16 h-16 mb-4"></i>
+                            <span class="text-sm uppercase tracking-widest"></span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Decoration -->
+                <div
+                    class="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-blue-50/50 rounded-full blur-3xl">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Features -->
+    <section id="features" class="py-24 bg-white">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">Focused on what matters</h2>
+                <p class="text-slate-500">Everything you need, nothing you don't.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Card 1 -->
+                <div class="p-8 border border-slate-100 rounded-3xl bg-slate-50/50 card-hover">
+                    <div
+                        class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 text-blue-600">
+                        <i data-lucide="hard-drive"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Fully Portable</h3>
+                    <p class="text-slate-600 leading-relaxed text-sm">
+                        Works from USB drives or cloud folders (OneDrive, Google Drive). No complex installations
+                        required.
+                    </p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="p-8 border border-slate-100 rounded-3xl bg-slate-50/50 card-hover">
+                    <div
+                        class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 text-green-600">
+                        <i data-lucide="zap"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Instant Search</h3>
+                    <p class="text-slate-600 leading-relaxed text-sm">
+                        Find what you need in the blink of an eye. Search engine optimized for extreme speed and
+                        performance.
+                    </p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="p-8 border border-slate-100 rounded-3xl bg-slate-50/50 card-hover">
+                    <div
+                        class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 text-purple-600">
+                        <i data-lucide="file-text"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Markdown Standard</h3>
+                    <p class="text-slate-600 leading-relaxed text-sm">
+                        Your notes are yours. Saved as local .md files, without proprietary formats or vendor lock-in.
+                    </p>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="p-8 border border-slate-100 rounded-3xl bg-slate-50/50 card-hover">
+                    <div
+                        class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 text-orange-600">
+                        <i data-lucide="monitor"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Multiplatform</h3>
+                    <p class="text-slate-600 leading-relaxed text-sm">
+                        Available for Windows, macOS, and Linux. A consistent experience across all your desktop
+                        devices.
+                    </p>
+                </div>
+
+                <!-- Card 5 -->
+                <div class="p-8 border border-slate-100 rounded-3xl bg-slate-50/50 card-hover">
+                    <div
+                        class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 text-indigo-600">
+                        <i data-lucide="share-2"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Obsidian Friendly</h3>
+                    <p class="text-slate-600 leading-relaxed text-sm">
+                        Can work alongside Obsidian vaults without any interference. Use both at the same time.
+                    </p>
+                </div>
+
+                <!-- Card 6 -->
+                <div class="p-8 border border-slate-100 rounded-3xl bg-slate-50/50 card-hover">
+                    <div
+                        class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 text-teal-600">
+                        <i data-lucide="cpu"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Light & Efficient</h3>
+                    <p class="text-slate-600 leading-relaxed text-sm">
+                        Uses less than 100MB of RAM. Opens instantly even on older machines or resource-limited systems.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Performance -->
+    <section id="performance" class="py-20 bg-slate-900 text-white overflow-hidden">
+        <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 items-center gap-16">
+            <div>
+                <h2 class="text-4xl font-bold mb-6 tracking-tight">Speed you can feel.</h2>
+                <p class="text-slate-400 text-lg mb-8 leading-relaxed">
+                    Felsic Notes was built with Qt6 and Python to ensure the interface responds to your thoughts, not
+                    the other way around.
+                </p>
+                <ul class="space-y-4">
+                    <li class="flex items-center gap-3">
+                        <div
+                            class="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-500">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                        </div>
+                        <span>Millisecond startup time</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <div
+                            class="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-500">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                        </div>
+                        <span>RAM consumption under 100MB</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <div
+                            class="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-500">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                        </div>
+                        <span>No telemetry or background processes</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="relative">
+                <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-2xl">
+                    <div class="flex items-end gap-2 h-40">
+                        <div class="bg-slate-700 w-full h-[80%] rounded-t-lg relative group">
+                            <div
+                                class="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-xs bg-slate-700 px-2 py-1 rounded">
+                                Obsidian (Electron)</div>
+                        </div>
+                        <div class="bg-blue-500 w-full h-[15%] rounded-t-lg relative group">
+                            <div
+                                class="absolute -top-10 left-1/2 -translate-x-1/2 opacity-100 text-xs bg-blue-500 px-2 py-1 rounded">
+                                Felsic (Qt6)</div>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-slate-700 text-center text-slate-500 text-sm">
+                        Approx. RAM Usage Comparison
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download -->
+    <section id="download" class="py-24 bg-white">
+        <div class="max-w-4xl mx-auto px-6 text-center">
+            <h2 class="text-4xl font-bold mb-4">Ready to start?</h2>
+            <p class="text-slate-600 mb-12">Download the version for your OS and point it to your notes folder.</p>
+
+            <div class="grid sm:grid-cols-3 gap-4">
+                <button
+                    class="flex flex-col items-center gap-3 p-6 border border-slate-200 rounded-2xl hover:border-slate-900 transition-all group">
+                    <i data-lucide="monitor" class="w-10 h-10 group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold">Windows</span>
+                    <span class="text-xs text-slate-400">Portable .exe</span>
+                </button>
+                <button
+                    class="flex flex-col items-center gap-3 p-6 border border-slate-200 rounded-2xl hover:border-slate-900 transition-all group">
+                    <i data-lucide="apple" class="w-10 h-10 group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold">macOS</span>
+                    <span class="text-xs text-slate-400">DMG / Apple Silicon</span>
+                </button>
+                <button
+                    class="flex flex-col items-center gap-3 p-6 border border-slate-200 rounded-2xl hover:border-slate-900 transition-all group">
+                    <i data-lucide="terminal" class="w-10 h-10 group-hover:scale-110 transition-transform"></i>
+                    <span class="font-bold">Linux</span>
+                    <span class="text-xs text-slate-400">AppImage / Tar.gz</span>
+                </button>
+            </div>
+
+            <p class="mt-12 text-sm text-slate-400">
+                Felsic Notes is free software. <a href="#" class="underline hover:text-slate-600">Read the license
+                    here.</a>
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 border-t border-slate-100">
+        <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 bg-slate-900 rounded flex items-center justify-center text-white text-xs font-bold">
+                    F</div>
+                <span class="font-bold">Felsic Notes</span>
+            </div>
+            <p class="text-sm text-slate-500">
+                © 2024 Felsic Notes Project. Built with Qt6 and Python.
+            </p>
+            <div class="flex gap-6">
+                <a href="#" class="text-slate-400 hover:text-slate-900 transition-colors"><i data-lucide="twitter"
+                        class="w-5 h-5"></i></a>
+                <a href="#" class="text-slate-400 hover:text-slate-900 transition-colors"><i data-lucide="github"
+                        class="w-5 h-5"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

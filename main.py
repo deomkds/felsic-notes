@@ -931,6 +931,17 @@ class MainWindow(QMainWindow):
         if source_index.isValid() and not self.file_model.isDir(source_index):
             # Clicou com botão direito num arquivo
             file_path = self.file_model.filePath(source_index)
+            base_dir = os.path.dirname(file_path)
+            
+            new_note_action = QAction("New Note...", self)
+            new_note_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_note(d))
+            menu.addAction(new_note_action)
+            
+            new_folder_action = QAction("New Folder...", self)
+            new_folder_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_folder(d))
+            menu.addAction(new_folder_action)
+            
+            menu.addSeparator()
             
             rename_action = QAction("Rename...", self)
             rename_action.triggered.connect(lambda checked=False, p=file_path: self.rename_note(p))
@@ -949,6 +960,12 @@ class MainWindow(QMainWindow):
             delete_action = QAction("Delete", self)
             delete_action.triggered.connect(lambda checked=False, p=file_path: self.delete_note(p))
             menu.addAction(delete_action)
+            
+            menu.addSeparator()
+            
+            reveal_action = QAction("Reveal in File Explorer", self)
+            reveal_action.triggered.connect(lambda checked=False, p=file_path: self.reveal_in_explorer(p))
+            menu.addAction(reveal_action)
             
         else:
             # Clicou nas pastas ou vazio
@@ -988,6 +1005,12 @@ class MainWindow(QMainWindow):
                 delete_dir_action = QAction("Delete Folder", self)
                 delete_dir_action.triggered.connect(lambda checked=False, p=base_dir: self.delete_folder(p))
                 menu.addAction(delete_dir_action)
+                
+                menu.addSeparator()
+                
+                reveal_action = QAction("Reveal in File Explorer", self)
+                reveal_action.triggered.connect(lambda checked=False, p=base_dir: self.reveal_in_explorer(p))
+                menu.addAction(reveal_action)
             else:
                 base_dir = self.current_folder
                 new_note_action = QAction("New Note...", self)
@@ -997,8 +1020,29 @@ class MainWindow(QMainWindow):
                 new_folder_action = QAction("New Folder...", self)
                 new_folder_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_folder(d))
                 menu.addAction(new_folder_action)
+                
+                menu.addSeparator()
+                
+                reveal_action = QAction("Reveal in File Explorer", self)
+                reveal_action.triggered.connect(lambda checked=False, p=base_dir: self.reveal_in_explorer(p))
+                menu.addAction(reveal_action)
         
         menu.exec(self.tree_view.viewport().mapToGlobal(position))
+        
+    def reveal_in_explorer(self, path):
+        import subprocess
+        try:
+            if sys.platform == 'win32':
+                subprocess.Popen(['explorer', '/select,', os.path.normpath(path)])
+            elif sys.platform == 'darwin':
+                subprocess.Popen(['open', '-R', path])
+            else:
+                # xdg-open doesn't select files natively across all DEs, so we open the parent folder if it's a file
+                if os.path.isfile(path):
+                    path = os.path.dirname(path)
+                subprocess.Popen(['xdg-open', path])
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to open file explorer:\n{e}")
 
     def rename_note(self, source_path):
         current_name = os.path.basename(source_path)

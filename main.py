@@ -1372,7 +1372,7 @@ class MainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     
-    icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
+    icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.svg")
     if os.path.exists(icon_path):
         app.setWindowIcon(QIcon(icon_path))
         

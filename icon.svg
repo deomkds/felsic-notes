@@ -31,15 +31,15 @@
   <rect x="32" y="32" width="448" height="448" rx="100" fill="url(#bgGrad)" filter="url(#shadow)"/>
 
   <!-- Note Document Base -->
-  <path d="M 144 112 h 144 l 80 80 v 192 a 16 16 0 0 1 -16 16 h -208 a 16 16 0 0 1 -16 -16 v -256 a 16 16 0 0 1 16 -16 z" fill="url(#paperGrad)" filter="url(#lightShadow)"/>
+  <path d="M 152 112 h 144 l 80 80 v 192 a 16 16 0 0 1 -16 16 h -208 a 16 16 0 0 1 -16 -16 v -256 a 16 16 0 0 1 16 -16 z" fill="url(#paperGrad)" filter="url(#lightShadow)"/>
   
   <!-- Document Fold -->
-  <path d="M 288 112 v 64 a 16 16 0 0 0 16 16 h 64 Z" fill="#CBD5E0"/>
+  <path d="M 296 112 v 64 a 16 16 0 0 0 16 16 h 64 Z" fill="#CBD5E0"/>
 
   <!-- Text lines -->
-  <rect x="176" y="240" width="80" height="16" rx="8" fill="#94A3B8" />
-  <rect x="176" y="288" width="160" height="16" rx="8" fill="#94A3B8" />
-  <rect x="176" y="336" width="120" height="16" rx="8" fill="#94A3B8" />
+  <rect x="184" y="240" width="80" height="16" rx="8" fill="#94A3B8" />
+  <rect x="184" y="288" width="160" height="16" rx="8" fill="#94A3B8" />
+  <rect x="184" y="336" width="120" height="16" rx="8" fill="#94A3B8" />
 
   <!-- Felsic Crystal Icon -->
   <g filter="url(#shadow)" transform="translate(0, -10)">

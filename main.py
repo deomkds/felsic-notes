@@ -3,6 +3,10 @@ import os
 import json
 import shutil
 import re
+import logging
+import subprocess
+import markdown
+from weasyprint import HTML, CSS
 
 
 # Emoji wrapper for robust color emoji rendering across platforms (especially Linux)
@@ -29,7 +33,7 @@ from PyQt6.QtWidgets import (
     QLineEdit, QLabel, QDialog, QListWidget, QListWidgetItem, QHBoxLayout,
     QPushButton, QAbstractItemView
 )
-from PyQt6.QtGui import QAction, QFont, QFileSystemModel, QIcon, QPdfWriter, QTextDocument, QColor
+from PyQt6.QtGui import QAction, QFont, QFileSystemModel, QIcon, QColor
 from PyQt6.QtCore import Qt, QDir, QSettings, QSortFilterProxyModel, QRegularExpression, QByteArray, QThread, pyqtSignal, QTimer
 
 class WorkspaceIndexer(QThread):
@@ -48,8 +52,8 @@ class WorkspaceIndexer(QThread):
                     if file.endswith('.md'):
                         full = os.path.join(root, file)
                         all_md.append((full, file))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.error(f"Error during workspace indexing: {e}")
         self.finished_indexing.emit(all_md)
 
 class FileFilterProxyModel(QSortFilterProxyModel):
@@ -294,6 +298,7 @@ class MainWindow(QMainWindow):
         self.current_file = None
         self.current_folder = None
         self.custom_font_size = 14
+        self.selected_batch_files = []
         
         # Load global settings
         self.settings = QSettings("Felsic", "FelsicNotes")
@@ -353,6 +358,8 @@ class MainWindow(QMainWindow):
         self.proxy_model.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         
         self.tree_view.setModel(self.proxy_model)
+        self.tree_view.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.tree_view.selectionModel().selectionChanged.connect(self.on_tree_selection_changed)
         
         left_layout.addWidget(self.search_box)
         left_layout.addWidget(self.tree_view)
@@ -364,7 +371,6 @@ class MainWindow(QMainWindow):
         self.tree_view.setHeaderHidden(True)
         self.tree_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree_view.customContextMenuRequested.connect(self.show_tree_context_menu)
-        self.tree_view.clicked.connect(self.on_tree_clicked)
         self.file_model.directoryLoaded.connect(self.sync_tree_selection)
         
         # Central Editor & Previewer mechanism
@@ -382,8 +388,38 @@ class MainWindow(QMainWindow):
         self.previewer = QTextBrowser()
         self.previewer.setOpenExternalLinks(True)
         
+        # Page 2: Multi-Selection View
+        self.multi_select_view = QWidget()
+        ms_layout = QVBoxLayout(self.multi_select_view)
+        ms_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        self.ms_label = QLabel("0 notes selected")
+        font_ms = QFont()
+        font_ms.setPointSize(18)
+        self.ms_label.setFont(font_ms)
+        self.ms_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        ms_layout.addWidget(self.ms_label)
+        ms_layout.addSpacing(20)
+        
+        self.btn_group_new_folder = QPushButton("New Folder from Selection")
+        self.btn_move = QPushButton("Move Items...")
+        self.btn_copy = QPushButton("Copy Items...")
+        self.btn_delete = QPushButton("Delete Items")
+        
+        for btn in [self.btn_group_new_folder, self.btn_move, self.btn_copy, self.btn_delete]:
+            btn.setMinimumWidth(250)
+            btn.setMinimumHeight(35)
+            ms_layout.addWidget(btn)
+            
+        self.btn_group_new_folder.clicked.connect(self.batch_group)
+        self.btn_move.clicked.connect(self.batch_move)
+        self.btn_copy.clicked.connect(self.batch_copy)
+        self.btn_delete.clicked.connect(self.batch_delete)
+        
         self.stacked_widget.addWidget(self.editor)
         self.stacked_widget.addWidget(self.previewer)
+        self.stacked_widget.addWidget(self.multi_select_view)
         
         # Right Side Container (Toolbar + Title + Editor)
         right_container = QWidget()
@@ -597,7 +633,12 @@ class MainWindow(QMainWindow):
         
         # Listen for content changes
         self.editor.document().modificationChanged.connect(self.update_title)
-        self.editor.textChanged.connect(self.update_stats)
+        
+        self.stats_timer = QTimer()
+        self.stats_timer.setSingleShot(True)
+        self.stats_timer.setInterval(500)
+        self.stats_timer.timeout.connect(self.do_update_stats)
+        self.editor.textChanged.connect(self.stats_timer.start)
         
         # Apply initial fallback zoom if not restored
         self.apply_font_size()
@@ -625,6 +666,12 @@ class MainWindow(QMainWindow):
             self._save_workspace_config()
 
     def update_stats(self):
+        # For direct calls
+        self.do_update_stats()
+
+    def do_update_stats(self):
+        if hasattr(self, 'stacked_widget') and self.stacked_widget.currentIndex() == 2:
+            return
         text = self.editor.toPlainText()
         chars = len(text)
         words = len(text.split())
@@ -657,7 +704,6 @@ class MainWindow(QMainWindow):
         if checked:
             # Switch to Rendered HTML
             text = self.editor.toPlainText()
-            import markdown
             # Compile markdown
             html = markdown.markdown(text, extensions=['extra', 'nl2br'])
             # We add a bit of basic styling so it doesn't look totally raw
@@ -902,8 +948,8 @@ class MainWindow(QMainWindow):
         try:
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.error(f"Failed to save workspace config: {e}")
 
     def new_file(self):
         if self.maybe_save():
@@ -1051,7 +1097,6 @@ class MainWindow(QMainWindow):
         menu.exec(self.tree_view.viewport().mapToGlobal(position))
         
     def reveal_in_explorer(self, path):
-        import subprocess
         try:
             if sys.platform == 'win32':
                 subprocess.Popen(['explorer', '/select,', os.path.normpath(path)])
@@ -1247,14 +1292,159 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Failed to create folder:\n{e}")
 
-    def on_tree_clicked(self, proxy_index):
-        source_index = self.proxy_model.mapToSource(proxy_index)
-        if not self.file_model.isDir(source_index):
-            file_path = self.file_model.filePath(source_index)
-            if file_path == self.current_file:
-                return
+    def on_tree_selection_changed(self, selected, deselected):
+        indexes = self.tree_view.selectionModel().selectedIndexes()
+        source_indexes = [self.proxy_model.mapToSource(idx) for idx in indexes if idx.column() == 0]
+        
+        self.selected_batch_files = []
+        total_size = 0
+        
+        for idx in source_indexes:
+            if not self.file_model.isDir(idx):
+                path = self.file_model.filePath(idx)
+                self.selected_batch_files.append(path)
+                try:
+                    total_size += os.path.getsize(path)
+                except Exception:
+                    pass
+                    
+        count = len(self.selected_batch_files)
+        
+        if count > 1:
             if self.maybe_save():
-                self.load_file(file_path)
+                self.editor.clear()
+                self.set_current_document(None)
+                
+            self.stacked_widget.setCurrentIndex(2)
+            self.title_box.hide()
+            self.ms_label.setText(f"{count} files selected")
+            
+            if total_size < 1024:
+                size_str = f"{total_size} B"
+            elif total_size < 1024 * 1024:
+                size_str = f"{total_size / 1024:.1f} KB"
+            else:
+                size_str = f"{total_size / (1024 * 1024):.2f} MB"
+                
+            self.stats_label.setText(f"{count} Files Selected  |  Total Size: {size_str}")
+            
+        elif count == 1:
+            path = self.selected_batch_files[0]
+            if path != self.current_file:
+                if self.maybe_save():
+                    self.load_file(path)
+            
+            if self.stacked_widget.currentIndex() == 2:
+                self.stacked_widget.setCurrentIndex(1 if self.toggle_preview_action.isChecked() else 0)
+                self.title_box.show()
+                self.do_update_stats()
+        else:
+            if self.stacked_widget.currentIndex() == 2:
+                self.stacked_widget.setCurrentIndex(1 if self.toggle_preview_action.isChecked() else 0)
+                self.title_box.show()
+                self.do_update_stats()
+
+    def batch_group(self):
+        if not self.selected_batch_files: return
+        files_to_process = list(self.selected_batch_files)
+        foldername, ok = QInputDialog.getText(self, "New Folder from Selection", "Folder Name:")
+        if ok and foldername.strip():
+            foldername = foldername.strip()
+            dest_folder = os.path.join(self.current_folder, foldername)
+            
+            if os.path.exists(dest_folder):
+                QMessageBox.warning(self, "Error", "A folder with this name already exists.")
+                return
+                
+            try:
+                self.tree_view.clearSelection()
+                os.makedirs(dest_folder)
+                self.proxy_model.add_to_index(dest_folder)
+                
+                for path in files_to_process:
+                    filename = os.path.basename(path)
+                    dest_path = os.path.join(dest_folder, filename)
+                    shutil.move(path, dest_path)
+                    self.proxy_model.rename_in_index(path, dest_path)
+                    
+                QMessageBox.information(self, "Success", f"Moved {len(files_to_process)} files to {foldername}.")
+            except Exception as e:
+                logging.error(f"Error grouping files: {e}")
+                QMessageBox.warning(self, "Error", f"Failed to group files:\n{e}")
+
+    def batch_move(self):
+        if not self.selected_batch_files: return
+        files_to_process = list(self.selected_batch_files)
+        dest_folder = QFileDialog.getExistingDirectory(self, "Select Destination Folder", self.current_folder)
+        if dest_folder:
+            self.tree_view.clearSelection()
+            moved_count = 0
+            for path in files_to_process:
+                filename = os.path.basename(path)
+                dest_path = os.path.join(dest_folder, filename)
+                if os.path.exists(dest_path):
+                    continue
+                try:
+                    shutil.move(path, dest_path)
+                    self.proxy_model.rename_in_index(path, dest_path)
+                    moved_count += 1
+                except Exception as e:
+                    logging.error(f"Error moving {path}: {e}")
+            QMessageBox.information(self, "Success", f"Moved {moved_count} files.")
+
+    def batch_copy(self):
+        if not self.selected_batch_files: return
+        files_to_process = list(self.selected_batch_files)
+        dest_folder = QFileDialog.getExistingDirectory(self, "Select Destination Folder", self.current_folder)
+        if dest_folder:
+            self.tree_view.clearSelection()
+            copied_count = 0
+            for path in files_to_process:
+                filename = os.path.basename(path)
+                dest_path = os.path.join(dest_folder, filename)
+                
+                if os.path.exists(dest_path):
+                    base_name, ext = os.path.splitext(filename)
+                    counter = 1
+                    suffix = " (copy)"
+                    while True:
+                        new_name = f"{base_name}{suffix}{ext}"
+                        dest_path = os.path.join(dest_folder, new_name)
+                        if not os.path.exists(dest_path):
+                            break
+                        counter += 1
+                        suffix = f" (copy {counter})"
+                        
+                try:
+                    shutil.copy2(path, dest_path)
+                    self.proxy_model.add_to_index(dest_path)
+                    copied_count += 1
+                except Exception as e:
+                    logging.error(f"Error copying {path}: {e}")
+            QMessageBox.information(self, "Success", f"Copied {copied_count} files.")
+
+    def batch_delete(self):
+        if not self.selected_batch_files: return
+        files_to_process = list(self.selected_batch_files)
+        count = len(files_to_process)
+        answer = QMessageBox.warning(
+            self, "Confirm Delete", 
+            f"Are you sure you want to permanently delete {count} files?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if answer == QMessageBox.StandardButton.Yes:
+            self.tree_view.clearSelection()
+            deleted_count = 0
+            for path in files_to_process:
+                try:
+                    os.remove(path)
+                    self.proxy_model.remove_from_index(path)
+                    deleted_count += 1
+                except Exception as e:
+                    logging.error(f"Error deleting {path}: {e}")
+            QMessageBox.information(self, "Success", f"Deleted {deleted_count} files.")
 
     def load_file(self, filename):
         try:
@@ -1330,10 +1520,9 @@ class MainWindow(QMainWindow):
                 filename += '.pdf'
                 
             text = self.editor.toPlainText()
-            import markdown
             html = markdown.markdown(text, extensions=['extra', 'nl2br'])
             try:
-                from weasyprint import HTML, CSS
+                QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
                 
                 styled_html = f"""
                 <h1 class="pdf-title">{title}</h1>
@@ -1352,6 +1541,7 @@ class MainWindow(QMainWindow):
                 ''')
                 
                 HTML(string=styled_html).write_pdf(filename, stylesheets=[css])
+                QApplication.restoreOverrideCursor()
                 
                 # Custom Success Message Box with "Open File" button
                 msg_box = QMessageBox(self)
@@ -1365,7 +1555,6 @@ class MainWindow(QMainWindow):
                 msg_box.exec()
                 
                 if msg_box.clickedButton() == open_button:
-                    import subprocess
                     try:
                         if sys.platform == 'win32':
                             os.startfile(filename)
@@ -1376,6 +1565,7 @@ class MainWindow(QMainWindow):
                     except Exception as e:
                         QMessageBox.warning(self, "Error", f"Failed to open PDF:\n{e}")
             except Exception as e:
+                QApplication.restoreOverrideCursor()
                 QMessageBox.warning(self, "Error", f"Could not export PDF:\n{e}")
 
     def _save_to_path(self, path):

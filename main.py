@@ -1352,6 +1352,11 @@ class MainWindow(QMainWindow):
             item_text = "1 item" if count == 1 else f"{count} items"
             self.ms_label.setText(f"{item_text} selected")
             
+            btn_item_text = "Item" if count == 1 else "Items"
+            self.btn_move.setText(f"Move {btn_item_text}...")
+            self.btn_copy.setText(f"Copy {btn_item_text}...")
+            self.btn_delete.setText(f"Delete {btn_item_text}")
+            
             if total_size < 1024:
                 size_str = f"{total_size} B"
             elif total_size < 1024 * 1024:
@@ -1359,7 +1364,7 @@ class MainWindow(QMainWindow):
             else:
                 size_str = f"{total_size / (1024 * 1024):.2f} MB"
                 
-            self.stats_label.setText(f"{item_text.title()} Selected  |  Total Size: {size_str}")
+            self.stats_label.setText(f"{item_text} selected  |  Total Size: {size_str}")
             
         elif count == 1:
             path = self.selected_batch_files[0]

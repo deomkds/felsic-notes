@@ -2,6 +2,26 @@ import sys
 import os
 import json
 import shutil
+import re
+
+
+# Emoji wrapper for robust color emoji rendering across platforms (especially Linux)
+_REGIONAL_INDICATOR = "[\U0001f1e6-\U0001f1ff]"
+_EMOJI_CHAR = "(?:[\U0001f600-\U0001f64f\U0001f300-\U0001f5ff\U0001f680-\U0001f6ff\U0001f900-\U0001f9ff\U0001fa70-\U0001faff\u2600-\u27bf\u2300-\u23ff]|\u20e3)"
+_SINGLE_EMOJI = f"(?:{_REGIONAL_INDICATOR}{{2}}|{_EMOJI_CHAR})"
+_MODIFIER = "[\ufe00-\ufe0f\U0001f3fb-\U0001f3ff]"
+_EMOJI_SEQ = f"{_SINGLE_EMOJI}{_MODIFIER}*(?:\u200d{_SINGLE_EMOJI}{_MODIFIER}*)*"
+_HTML_TAG_OR_EMOJI = re.compile(rf"(?i)(<style.*?</style>|<[^>]+>)|({_EMOJI_SEQ})", re.DOTALL)
+
+def wrap_emojis_in_html(html_content):
+    def replace_match(m):
+        if m.group(1):
+            return m.group(1)
+        return f"<span style=\"font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;\">{m.group(2)}</span>"
+    return _HTML_TAG_OR_EMOJI.sub(replace_match, html_content)
+
+
+
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPlainTextEdit, QFileDialog, QMessageBox,
     QSplitter, QTreeView, QStackedWidget, QTextBrowser, QToolBar,
@@ -643,15 +663,16 @@ class MainWindow(QMainWindow):
             # We add a bit of basic styling so it doesn't look totally raw
             styled_html = f"""
             <style>
-                body {{ font-family: sans-serif; font-size: 14px; line-height: 1.6; }}
-                code {{ background-color: #f4f4f4; padding: 2px 4px; border-radius: 4px; font-family: monospace; }}
-                pre {{ background-color: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }}
+                body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif; font-size: 14px; line-height: 1.6; }}
+                code {{ background-color: #f4f4f4; padding: 2px 4px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", monospace; }}
+                pre {{ background-color: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", monospace; }}
                 blockquote {{ border-left: 4px solid #ccc; margin-left: 0; padding-left: 16px; color: #666; }}
                 table {{ border-collapse: collapse; width: 100%; }}
                 th, td {{ border: 1px solid #ddd; padding: 8px; }}
             </style>
             {html}
             """
+            styled_html = wrap_emojis_in_html(styled_html)
             self.previewer.setHtml(styled_html)
             self.stacked_widget.setCurrentIndex(1)
         else:
@@ -1293,41 +1314,67 @@ class MainWindow(QMainWindow):
         return False
 
     def export_pdf(self):
+        title = self.title_box.text().strip()
+        if not title:
+            title = "Untitled Note"
+            
+        default_path = f"{title}.pdf"
+        if self.current_folder:
+            default_path = os.path.join(self.current_folder, default_path)
+            
         filename, _ = QFileDialog.getSaveFileName(
-            self, "Export PDF", "", "PDF Files (*.pdf)"
+            self, "Export PDF", default_path, "PDF Files (*.pdf)"
         )
         if filename:
             if not filename.endswith('.pdf') and '.' not in os.path.basename(filename):
                 filename += '.pdf'
                 
-            title = self.title_box.text().strip()
-            if not title:
-                title = "Untitled Note"
-                
             text = self.editor.toPlainText()
             import markdown
             html = markdown.markdown(text, extensions=['extra', 'nl2br'])
-            styled_html = f"""
-            <style>
-                body {{ font-family: sans-serif; font-size: {self.custom_font_size}px; line-height: 1.6; color: black; }}
-                code {{ background-color: #f4f4f4; padding: 2px 4px; border-radius: 4px; font-family: monospace; }}
-                pre {{ background-color: #f4f4f4; padding: 10px; border-radius: 4px; }}
-                blockquote {{ border-left: 4px solid #ccc; margin-left: 0; padding-left: 16px; color: #666; }}
-                table {{ border-collapse: collapse; width: 100%; }}
-                th, td {{ border: 1px solid #ddd; padding: 8px; }}
-                h1.pdf-title {{ border-bottom: 2px solid #ccc; font-size: 24px; padding-bottom: 10px; margin-bottom: 20px; }}
-            </style>
-            <h1 class="pdf-title">{title}</h1>
-            {html}
-            """
-            
-            doc = QTextDocument()
-            doc.setHtml(styled_html)
-            
             try:
-                writer = QPdfWriter(filename)
-                doc.print(writer)
-                QMessageBox.information(self, "Export PDF", "PDF successfully exported.")
+                from weasyprint import HTML, CSS
+                
+                styled_html = f"""
+                <h1 class="pdf-title">{title}</h1>
+                {html}
+                """
+                
+                css = CSS(string=f'''
+                    @page {{ margin: 20mm; }}
+                    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif; font-size: {self.custom_font_size}px; line-height: 1.6; color: black; }}
+                    code {{ background-color: #f4f4f4; padding: 2px 4px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }}
+                    pre {{ background-color: #f4f4f4; padding: 10px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; white-space: pre-wrap; }}
+                    blockquote {{ border-left: 4px solid #ccc; margin-left: 0; padding-left: 16px; color: #666; }}
+                    table {{ border-collapse: collapse; width: 100%; }}
+                    th, td {{ border: 1px solid #ddd; padding: 8px; }}
+                    h1.pdf-title {{ border-bottom: 2px solid #ccc; font-size: 24px; padding-bottom: 10px; margin-bottom: 20px; }}
+                ''')
+                
+                HTML(string=styled_html).write_pdf(filename, stylesheets=[css])
+                
+                # Custom Success Message Box with "Open File" button
+                msg_box = QMessageBox(self)
+                msg_box.setIcon(QMessageBox.Icon.Information)
+                msg_box.setWindowTitle("Export PDF")
+                msg_box.setText("PDF successfully exported.")
+                
+                open_button = msg_box.addButton("Open File", QMessageBox.ButtonRole.ActionRole)
+                msg_box.addButton(QMessageBox.StandardButton.Ok)
+                
+                msg_box.exec()
+                
+                if msg_box.clickedButton() == open_button:
+                    import subprocess
+                    try:
+                        if sys.platform == 'win32':
+                            os.startfile(filename)
+                        elif sys.platform == 'darwin':
+                            subprocess.Popen(['open', filename])
+                        else:
+                            subprocess.Popen(['xdg-open', filename])
+                    except Exception as e:
+                        QMessageBox.warning(self, "Error", f"Failed to open PDF:\n{e}")
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Could not export PDF:\n{e}")
 

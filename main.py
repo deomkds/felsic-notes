@@ -698,7 +698,9 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
                 
-        self.stats_label.setText(f"{words} words  |  {chars} characters  |  {status}{size_str}{date_info}")
+        word_text = "1 word" if words == 1 else f"{words} words"
+        char_text = "1 character" if chars == 1 else f"{chars} characters"
+        self.stats_label.setText(f"{status}{date_info}  |  {word_text}  |  {char_text}{size_str}")
 
     def on_title_changed(self):
         if not self.editor.document().isModified():
@@ -1347,7 +1349,8 @@ class MainWindow(QMainWindow):
                 
             self.stacked_widget.setCurrentIndex(2)
             self.title_box.hide()
-            self.ms_label.setText(f"{count} items selected")
+            item_text = "1 item" if count == 1 else f"{count} items"
+            self.ms_label.setText(f"{item_text} selected")
             
             if total_size < 1024:
                 size_str = f"{total_size} B"
@@ -1356,7 +1359,7 @@ class MainWindow(QMainWindow):
             else:
                 size_str = f"{total_size / (1024 * 1024):.2f} MB"
                 
-            self.stats_label.setText(f"{count} Items Selected  |  Total Size: {size_str}")
+            self.stats_label.setText(f"{item_text.title()} Selected  |  Total Size: {size_str}")
             
         elif count == 1:
             path = self.selected_batch_files[0]
@@ -1401,7 +1404,8 @@ class MainWindow(QMainWindow):
                     else:
                         self.proxy_model.rename_in_index(path, dest_path)
                     
-                QMessageBox.information(self, "Success", f"Moved {len(files_to_process)} items to {foldername}.")
+                item_text = "1 item" if len(files_to_process) == 1 else f"{len(files_to_process)} items"
+                QMessageBox.information(self, "Success", f"Moved {item_text} to {foldername}.")
             except Exception as e:
                 logging.error(f"Error grouping files: {e}")
                 QMessageBox.warning(self, "Error", f"Failed to group files:\n{e}")
@@ -1428,7 +1432,8 @@ class MainWindow(QMainWindow):
                     moved_count += 1
                 except Exception as e:
                     logging.error(f"Error moving {path}: {e}")
-            QMessageBox.information(self, "Success", f"Moved {moved_count} items.")
+            item_text = "1 item" if moved_count == 1 else f"{moved_count} items"
+            QMessageBox.information(self, "Success", f"Moved {item_text}.")
 
     def batch_copy(self):
         if not self.selected_batch_files: return
@@ -1469,15 +1474,17 @@ class MainWindow(QMainWindow):
             if needs_reindex:
                 self.proxy_model.update_workspace_index(self.current_folder)
                 
-            QMessageBox.information(self, "Success", f"Copied {copied_count} items.")
+            item_text = "1 item" if copied_count == 1 else f"{copied_count} items"
+            QMessageBox.information(self, "Success", f"Copied {item_text}.")
 
     def batch_delete(self):
         if not self.selected_batch_files: return
         files_to_process = list(self.selected_batch_files)
         count = len(files_to_process)
+        item_text = "1 item" if count == 1 else f"{count} items"
         answer = QMessageBox.warning(
             self, "Confirm Delete", 
-            f"Are you sure you want to permanently delete {count} files?",
+            f"Are you sure you want to permanently delete {item_text}?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
@@ -1496,7 +1503,8 @@ class MainWindow(QMainWindow):
                     deleted_count += 1
                 except Exception as e:
                     logging.error(f"Error deleting {path}: {e}")
-            QMessageBox.information(self, "Success", f"Deleted {deleted_count} items.")
+            item_text_del = "1 item" if deleted_count == 1 else f"{deleted_count} items"
+            QMessageBox.information(self, "Success", f"Deleted {item_text_del}.")
 
     def load_file(self, filename):
         try:

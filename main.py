@@ -6,6 +6,7 @@ import re
 import logging
 import subprocess
 import markdown
+import datetime
 from weasyprint import HTML, CSS
 
 
@@ -676,24 +677,28 @@ class MainWindow(QMainWindow):
         chars = len(text)
         words = len(text.split())
         
-        size_str = "Unsaved"
+        status = "Unsaved" if self.editor.document().isModified() else "Saved"
+        size_str = ""
+        date_info = ""
+        
         if self.current_file and os.path.exists(self.current_file):
             size_bytes = os.path.getsize(self.current_file)
             if size_bytes < 1024:
-                size_str = f"{size_bytes} B"
+                size_str = f"  |  Size: {size_bytes} B"
             elif size_bytes < 1024 * 1024:
-                size_str = f"{size_bytes / 1024:.1f} KB"
+                size_str = f"  |  Size: {size_bytes / 1024:.1f} KB"
             else:
-                size_str = f"{size_bytes / (1024 * 1024):.2f} MB"
-        else:
-            # Estimate size
-            size_bytes = len(text.encode('utf-8'))
-            if size_bytes < 1024:
-                size_str = f"~{size_bytes} B"
-            else:
-                size_str = f"~{size_bytes / 1024:.1f} KB"
-            
-        self.stats_label.setText(f"{words} Words  |  {chars} Characters  |  Size: {size_str}")
+                size_str = f"  |  Size: {size_bytes / (1024 * 1024):.2f} MB"
+                
+            try:
+                stat = os.stat(self.current_file)
+                c_time = datetime.datetime.fromtimestamp(stat.st_ctime).strftime("%d/%m/%Y %H:%M")
+                m_time = datetime.datetime.fromtimestamp(stat.st_mtime).strftime("%d/%m/%Y %H:%M")
+                date_info = f"  |  Created: {c_time}  |  Modified: {m_time}"
+            except Exception:
+                pass
+                
+        self.stats_label.setText(f"{words} words  |  {chars} characters  |  {status}{size_str}{date_info}")
 
     def on_title_changed(self):
         if not self.editor.document().isModified():
@@ -1292,17 +1297,42 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Failed to create folder:\n{e}")
 
+    def get_directory_size(self, path):
+        total = 0
+        try:
+            for root, dirs, files in os.walk(path):
+                for f in files:
+                    if f.endswith('.md'):
+                        fp = os.path.join(root, f)
+                        if os.path.exists(fp):
+                            total += os.path.getsize(fp)
+        except Exception:
+            pass
+        return total
+
     def on_tree_selection_changed(self, selected, deselected):
         indexes = self.tree_view.selectionModel().selectedIndexes()
         source_indexes = [self.proxy_model.mapToSource(idx) for idx in indexes if idx.column() == 0]
         
-        self.selected_batch_files = []
-        total_size = 0
+        raw_paths = [self.file_model.filePath(idx) for idx in source_indexes]
         
-        for idx in source_indexes:
-            if not self.file_model.isDir(idx):
-                path = self.file_model.filePath(idx)
-                self.selected_batch_files.append(path)
+        # Filter out descendants to prevent double counting sizes and breaking batch operations
+        sorted_paths = sorted(raw_paths)
+        self.selected_batch_files = []
+        for p in sorted_paths:
+            is_descendant = False
+            for parent in self.selected_batch_files:
+                if p.startswith(parent + os.sep):
+                    is_descendant = True
+                    break
+            if not is_descendant:
+                self.selected_batch_files.append(p)
+                
+        total_size = 0
+        for path in self.selected_batch_files:
+            if os.path.isdir(path):
+                total_size += self.get_directory_size(path)
+            else:
                 try:
                     total_size += os.path.getsize(path)
                 except Exception:
@@ -1310,14 +1340,14 @@ class MainWindow(QMainWindow):
                     
         count = len(self.selected_batch_files)
         
-        if count > 1:
+        if count > 1 or (count == 1 and os.path.isdir(self.selected_batch_files[0])):
             if self.maybe_save():
                 self.editor.clear()
                 self.set_current_document(None)
                 
             self.stacked_widget.setCurrentIndex(2)
             self.title_box.hide()
-            self.ms_label.setText(f"{count} files selected")
+            self.ms_label.setText(f"{count} items selected")
             
             if total_size < 1024:
                 size_str = f"{total_size} B"
@@ -1326,7 +1356,7 @@ class MainWindow(QMainWindow):
             else:
                 size_str = f"{total_size / (1024 * 1024):.2f} MB"
                 
-            self.stats_label.setText(f"{count} Files Selected  |  Total Size: {size_str}")
+            self.stats_label.setText(f"{count} Items Selected  |  Total Size: {size_str}")
             
         elif count == 1:
             path = self.selected_batch_files[0]
@@ -1364,10 +1394,14 @@ class MainWindow(QMainWindow):
                 for path in files_to_process:
                     filename = os.path.basename(path)
                     dest_path = os.path.join(dest_folder, filename)
+                    is_dir = os.path.isdir(path)
                     shutil.move(path, dest_path)
-                    self.proxy_model.rename_in_index(path, dest_path)
+                    if is_dir:
+                        self.proxy_model.rename_dir_in_index(path, dest_path)
+                    else:
+                        self.proxy_model.rename_in_index(path, dest_path)
                     
-                QMessageBox.information(self, "Success", f"Moved {len(files_to_process)} files to {foldername}.")
+                QMessageBox.information(self, "Success", f"Moved {len(files_to_process)} items to {foldername}.")
             except Exception as e:
                 logging.error(f"Error grouping files: {e}")
                 QMessageBox.warning(self, "Error", f"Failed to group files:\n{e}")
@@ -1385,12 +1419,16 @@ class MainWindow(QMainWindow):
                 if os.path.exists(dest_path):
                     continue
                 try:
+                    is_dir = os.path.isdir(path)
                     shutil.move(path, dest_path)
-                    self.proxy_model.rename_in_index(path, dest_path)
+                    if is_dir:
+                        self.proxy_model.rename_dir_in_index(path, dest_path)
+                    else:
+                        self.proxy_model.rename_in_index(path, dest_path)
                     moved_count += 1
                 except Exception as e:
                     logging.error(f"Error moving {path}: {e}")
-            QMessageBox.information(self, "Success", f"Moved {moved_count} files.")
+            QMessageBox.information(self, "Success", f"Moved {moved_count} items.")
 
     def batch_copy(self):
         if not self.selected_batch_files: return
@@ -1399,6 +1437,7 @@ class MainWindow(QMainWindow):
         if dest_folder:
             self.tree_view.clearSelection()
             copied_count = 0
+            needs_reindex = False
             for path in files_to_process:
                 filename = os.path.basename(path)
                 dest_path = os.path.join(dest_folder, filename)
@@ -1416,12 +1455,21 @@ class MainWindow(QMainWindow):
                         suffix = f" (copy {counter})"
                         
                 try:
-                    shutil.copy2(path, dest_path)
-                    self.proxy_model.add_to_index(dest_path)
+                    is_dir = os.path.isdir(path)
+                    if is_dir:
+                        shutil.copytree(path, dest_path)
+                        needs_reindex = True
+                    else:
+                        shutil.copy2(path, dest_path)
+                        self.proxy_model.add_to_index(dest_path)
                     copied_count += 1
                 except Exception as e:
                     logging.error(f"Error copying {path}: {e}")
-            QMessageBox.information(self, "Success", f"Copied {copied_count} files.")
+            
+            if needs_reindex:
+                self.proxy_model.update_workspace_index(self.current_folder)
+                
+            QMessageBox.information(self, "Success", f"Copied {copied_count} items.")
 
     def batch_delete(self):
         if not self.selected_batch_files: return
@@ -1439,12 +1487,16 @@ class MainWindow(QMainWindow):
             deleted_count = 0
             for path in files_to_process:
                 try:
-                    os.remove(path)
-                    self.proxy_model.remove_from_index(path)
+                    if os.path.isdir(path):
+                        shutil.rmtree(path)
+                        self.proxy_model.remove_dir_from_index(path)
+                    else:
+                        os.remove(path)
+                        self.proxy_model.remove_from_index(path)
                     deleted_count += 1
                 except Exception as e:
                     logging.error(f"Error deleting {path}: {e}")
-            QMessageBox.information(self, "Success", f"Deleted {deleted_count} files.")
+            QMessageBox.information(self, "Success", f"Deleted {deleted_count} items.")
 
     def load_file(self, filename):
         try:

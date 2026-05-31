@@ -9,6 +9,33 @@ import markdown
 import datetime
 from weasyprint import HTML, CSS
 
+import json
+from PyQt6.QtCore import QSettings
+
+class Translator:
+    def __init__(self):
+        self.strings = {}
+        
+    def load(self, lang_code):
+        try:
+            import os
+            with open(os.path.join(os.path.dirname(__file__), 'locales', f"{lang_code}.json"), 'r', encoding='utf-8') as f:
+                self.strings = json.load(f)
+        except Exception:
+            self.strings = {}
+            
+    def tr(self, text, *args, **kwargs):
+        translated = self.strings.get(text, text)
+        if args or kwargs:
+            return translated.format(*args, **kwargs)
+        return translated
+
+app_translator = Translator()
+
+def _(text, *args, **kwargs):
+    return app_translator.tr(text, *args, **kwargs)
+
+
 
 # Emoji wrapper for robust color emoji rendering across platforms (especially Linux)
 _REGIONAL_INDICATOR = "[\U0001f1e6-\U0001f1ff]"
@@ -193,7 +220,7 @@ class FileFilterProxyModel(QSortFilterProxyModel):
 class CustomizeToolbarDialog(QDialog):
     def __init__(self, catalog, current_layout, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Customize Toolbar")
+        self.setWindowTitle(_("Customize Toolbar"))
         self.catalog = catalog
         self.current_layout = list(current_layout)
         
@@ -202,35 +229,35 @@ class CustomizeToolbarDialog(QDialog):
         main_layout = QHBoxLayout(self)
         
         left_layout = QVBoxLayout()
-        left_layout.addWidget(QLabel("Available Actions:"))
+        left_layout.addWidget(QLabel(_("Available Actions:")))
         self.avail_list = QListWidget()
         left_layout.addWidget(self.avail_list)
         main_layout.addLayout(left_layout)
         
         btn_layout = QVBoxLayout()
         btn_layout.addStretch()
-        self.btn_add = QPushButton("Add ->")
-        self.btn_remove = QPushButton("<- Remove")
+        self.btn_add = QPushButton(_("Add ->"))
+        self.btn_remove = QPushButton(_("<- Remove"))
         btn_layout.addWidget(self.btn_add)
         btn_layout.addWidget(self.btn_remove)
         btn_layout.addStretch()
         main_layout.addLayout(btn_layout)
         
         right_layout = QVBoxLayout()
-        right_layout.addWidget(QLabel("Current Toolbar:"))
+        right_layout.addWidget(QLabel(_("Current Toolbar:")))
         self.curr_list = QListWidget()
         right_layout.addWidget(self.curr_list)
         
         ud_layout = QHBoxLayout()
-        self.btn_up = QPushButton("Up")
-        self.btn_down = QPushButton("Down")
+        self.btn_up = QPushButton(_("Up"))
+        self.btn_down = QPushButton(_("Down"))
         ud_layout.addWidget(self.btn_up)
         ud_layout.addWidget(self.btn_down)
         right_layout.addLayout(ud_layout)
         
         ac_layout = QHBoxLayout()
-        self.btn_apply = QPushButton("Apply")
-        self.btn_cancel = QPushButton("Cancel")
+        self.btn_apply = QPushButton(_("Apply"))
+        self.btn_cancel = QPushButton(_("Cancel"))
         ac_layout.addWidget(self.btn_apply)
         ac_layout.addWidget(self.btn_cancel)
         right_layout.addLayout(ac_layout)
@@ -340,7 +367,7 @@ class MainWindow(QMainWindow):
         self.search_timer.timeout.connect(self.apply_search)
         
         self.search_box = QLineEdit()
-        self.search_box.setPlaceholderText("Search notes...")
+        self.search_box.setPlaceholderText(_("Search notes..."))
         self.search_box.setClearButtonEnabled(True)
         self.search_box.textChanged.connect(self.on_search_changed)
         self.search_box.setStyleSheet("QLineEdit { padding: 5px; border-radius: 4px; border: 1px solid #ccc; margin: 4px; }")
@@ -394,7 +421,7 @@ class MainWindow(QMainWindow):
         ms_layout = QVBoxLayout(self.multi_select_view)
         ms_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        self.ms_label = QLabel("0 notes selected")
+        self.ms_label = QLabel(_("0 notes selected"))
         font_ms = QFont()
         font_ms.setPointSize(18)
         self.ms_label.setFont(font_ms)
@@ -403,10 +430,10 @@ class MainWindow(QMainWindow):
         ms_layout.addWidget(self.ms_label)
         ms_layout.addSpacing(20)
         
-        self.btn_group_new_folder = QPushButton("New Folder from Selection")
-        self.btn_move = QPushButton("Move Items...")
-        self.btn_copy = QPushButton("Copy Items...")
-        self.btn_delete = QPushButton("Delete Items")
+        self.btn_group_new_folder = QPushButton(_("New Folder from Selection"))
+        self.btn_move = QPushButton(_("Move Items..."))
+        self.btn_copy = QPushButton(_("Copy Items..."))
+        self.btn_delete = QPushButton(_("Delete Items"))
         
         for btn in [self.btn_group_new_folder, self.btn_move, self.btn_copy, self.btn_delete]:
             btn.setMinimumWidth(250)
@@ -434,120 +461,120 @@ class MainWindow(QMainWindow):
         self.view_toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         
         save_icon = QIcon.fromTheme("document-save", self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
-        self.save_button_action = QAction(save_icon, "Save", self)
+        self.save_button_action = QAction(save_icon, _("Save"), self)
         self.save_button_action.setShortcut("Ctrl+S")
         self.save_button_action.triggered.connect(self.save_file)
         
         save_as_icon = QIcon.fromTheme("document-save-as", self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
-        self.save_as_button_action = QAction(save_as_icon, "Save As...", self)
+        self.save_as_button_action = QAction(save_as_icon, _("Save As..."), self)
         self.save_as_button_action.setShortcut("Ctrl+Shift+S")
         self.save_as_button_action.triggered.connect(self.save_file_as)
         
         new_icon = QIcon.fromTheme("document-new", self.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon))
-        self.new_action = QAction(new_icon, "New", self)
+        self.new_action = QAction(new_icon, _("New"), self)
         self.new_action.setShortcut("Ctrl+N")
         self.new_action.triggered.connect(self.new_file)
         
         open_icon = QIcon.fromTheme("document-open", self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton))
-        self.open_action = QAction(open_icon, "Open File...", self)
+        self.open_action = QAction(open_icon, _("Open File..."), self)
         self.open_action.setShortcut("Ctrl+O")
         self.open_action.triggered.connect(self.open_file)
         
         folder_icon = QIcon.fromTheme("folder-open", self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
-        self.open_folder_action = QAction(folder_icon, "Open Folder...", self)
+        self.open_folder_action = QAction(folder_icon, _("Open Folder..."), self)
         self.open_folder_action.setShortcut("Ctrl+Shift+O")
         self.open_folder_action.triggered.connect(self.open_folder)
         
         exit_icon = QIcon.fromTheme("application-exit", self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCloseButton))
-        self.exit_action = QAction(exit_icon, "Quit", self)
+        self.exit_action = QAction(exit_icon, _("Quit"), self)
         self.exit_action.setShortcut("Ctrl+Q")
         self.exit_action.triggered.connect(self.close)
         
         pdf_icon = QIcon.fromTheme("application-pdf-symbolic", QIcon.fromTheme("application-pdf", self.style().standardIcon(QStyle.StandardPixmap.SP_DriveFDIcon)))
-        self.export_pdf_action = QAction(pdf_icon, "Export to PDF", self)
+        self.export_pdf_action = QAction(pdf_icon, _("Export to PDF"), self)
         self.export_pdf_action.triggered.connect(self.export_pdf)
         
         zoom_in_icon = QIcon.fromTheme("zoom-in")
-        self.zoom_in_action = QAction(zoom_in_icon, "Zoom In", self)
+        self.zoom_in_action = QAction(zoom_in_icon, _("Zoom In"), self)
         self.zoom_in_action.triggered.connect(self.zoom_in)
         
         zoom_out_icon = QIcon.fromTheme("zoom-out")
-        self.zoom_out_action = QAction(zoom_out_icon, "Zoom Out", self)
+        self.zoom_out_action = QAction(zoom_out_icon, _("Zoom Out"), self)
         self.zoom_out_action.triggered.connect(self.zoom_out)
         
         bold_icon = QIcon.fromTheme("format-text-bold")
-        self.bold_action = QAction(bold_icon, "Bold", self)
+        self.bold_action = QAction(bold_icon, _("Bold"), self)
         self.bold_action.triggered.connect(lambda: self.toggle_markdown("**"))
         
         italic_icon = QIcon.fromTheme("format-text-italic")
-        self.italic_action = QAction(italic_icon, "Italic", self)
+        self.italic_action = QAction(italic_icon, _("Italic"), self)
         self.italic_action.triggered.connect(lambda: self.toggle_markdown("*"))
         
         link_icon = QIcon.fromTheme("insert-link", self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowRight))
-        self.link_action = QAction(link_icon, "Link", self)
+        self.link_action = QAction(link_icon, _("Link"), self)
         self.link_action.triggered.connect(self.insert_link)
         
         code_icon = QIcon.fromTheme("format-text-code")
         if code_icon.isNull(): # fallback gracefully
              code_icon = QIcon.fromTheme("text-x-script", self.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon))
-        self.code_action = QAction(code_icon, "Code", self)
+        self.code_action = QAction(code_icon, _("Code"), self)
         self.code_action.triggered.connect(lambda: self.toggle_markdown("`"))
         
         preview_icon = QIcon.fromTheme("view-preview", self.style().standardIcon(QStyle.StandardPixmap.SP_DesktopIcon))
-        self.toggle_preview_action = QAction(preview_icon, "Toggle Preview", self)
+        self.toggle_preview_action = QAction(preview_icon, _("Toggle Preview"), self)
         self.toggle_preview_action.setShortcut("Ctrl+P")
         self.toggle_preview_action.setCheckable(True)
         self.toggle_preview_action.triggered.connect(self.toggle_preview)
         
         wrap_icon = QIcon.fromTheme("format-text-wrap", self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView))
-        self.toggle_wrap_action = QAction(wrap_icon, "Wrap Text", self)
+        self.toggle_wrap_action = QAction(wrap_icon, _("Wrap Text"), self)
         self.toggle_wrap_action.setCheckable(True)
         self.toggle_wrap_action.setChecked(True)
         self.toggle_wrap_action.triggered.connect(self.toggle_wrapping)
         
-        self.upper_action = QAction("UPPER CASE", self)
+        self.upper_action = QAction(_("UPPER CASE"), self)
         self.upper_action.triggered.connect(lambda: self.change_case("upper"))
         
-        self.lower_action = QAction("lower case", self)
+        self.lower_action = QAction(_("lower case"), self)
         self.lower_action.triggered.connect(lambda: self.change_case("lower"))
         
-        self.title_action = QAction("Title Case", self)
+        self.title_action = QAction(_("Title Case"), self)
         self.title_action.triggered.connect(lambda: self.change_case("title"))
         
-        self.sentence_action = QAction("Sentence case", self)
+        self.sentence_action = QAction(_("Sentence case"), self)
         self.sentence_action.triggered.connect(lambda: self.change_case("sentence"))
         
-        self.toggle_hide_empty_action = QAction("Hide Empty Folders", self)
+        self.toggle_hide_empty_action = QAction(_("Hide Empty Folders"), self)
         self.toggle_hide_empty_action.setCheckable(True)
         self.toggle_hide_empty_action.triggered.connect(self.toggle_hide_empty_folders)
         
-        self.about_action = QAction("About", self)
+        self.about_action = QAction(_("About"), self)
         self.about_action.triggered.connect(self.show_about)
         
         self.available_tools_catalog = {
-            "new_file": {"name": "New File", "action": self.new_action},
-            "open_file": {"name": "Open File...", "action": self.open_action},
-            "open_folder": {"name": "Open Folder...", "action": self.open_folder_action},
-            "exit": {"name": "Quit", "action": self.exit_action},
-            "save_file": {"name": "Save", "action": self.save_button_action},
-            "save_as": {"name": "Save As...", "action": self.save_as_button_action},
-            "export_pdf": {"name": "Export to PDF", "action": self.export_pdf_action},
-            "zoom_in": {"name": "Zoom In", "action": self.zoom_in_action},
-            "zoom_out": {"name": "Zoom Out", "action": self.zoom_out_action},
-            "bold": {"name": "Bold", "action": self.bold_action},
-            "italic": {"name": "Italic", "action": self.italic_action},
-            "link": {"name": "Link", "action": self.link_action},
-            "code": {"name": "Code", "action": self.code_action},
-            "upper_case": {"name": "UPPER CASE", "action": self.upper_action},
-            "lower_case": {"name": "lower case", "action": self.lower_action},
-            "title_case": {"name": "Title Case", "action": self.title_action},
-            "sentence_case": {"name": "Sentence case", "action": self.sentence_action},
-            "preview": {"name": "Toggle Preview", "action": self.toggle_preview_action},
-            "wrap_text": {"name": "Toggle Wrap", "action": self.toggle_wrap_action},
-            "hide_empty_folders": {"name": "Hide Empty Folders", "action": self.toggle_hide_empty_action},
-            "about": {"name": "About", "action": self.about_action},
-            "spacer": {"name": "Space (Align Right)", "action": None},
-            "separator": {"name": "Vertical Separator", "action": None}
+            "new_file": {"name": _("New File"), "action": self.new_action},
+            "open_file": {"name": _("Open File..."), "action": self.open_action},
+            "open_folder": {"name": _("Open Folder..."), "action": self.open_folder_action},
+            "exit": {"name": _("Quit"), "action": self.exit_action},
+            "save_file": {"name": _("Save"), "action": self.save_button_action},
+            "save_as": {"name": _("Save As..."), "action": self.save_as_button_action},
+            "export_pdf": {"name": _("Export to PDF"), "action": self.export_pdf_action},
+            "zoom_in": {"name": _("Zoom In"), "action": self.zoom_in_action},
+            "zoom_out": {"name": _("Zoom Out"), "action": self.zoom_out_action},
+            "bold": {"name": _("Bold"), "action": self.bold_action},
+            "italic": {"name": _("Italic"), "action": self.italic_action},
+            "link": {"name": _("Link"), "action": self.link_action},
+            "code": {"name": _("Code"), "action": self.code_action},
+            "upper_case": {"name": _("UPPER CASE"), "action": self.upper_action},
+            "lower_case": {"name": _("lower case"), "action": self.lower_action},
+            "title_case": {"name": _("Title Case"), "action": self.title_action},
+            "sentence_case": {"name": _("Sentence case"), "action": self.sentence_action},
+            "preview": {"name": _("Toggle Preview"), "action": self.toggle_preview_action},
+            "wrap_text": {"name": _("Toggle Wrap"), "action": self.toggle_wrap_action},
+            "hide_empty_folders": {"name": _("Hide Empty Folders"), "action": self.toggle_hide_empty_action},
+            "about": {"name": _("About"), "action": self.about_action},
+            "spacer": {"name": _("Space (Align Right)"), "action": None},
+            "separator": {"name": _("Vertical Separator"), "action": None}
         }
         
         self.default_toolbar_layout = [
@@ -562,7 +589,7 @@ class MainWindow(QMainWindow):
         
         # Title Box
         self.title_box = QLineEdit()
-        self.title_box.setPlaceholderText("Untitled Note")
+        self.title_box.setPlaceholderText(_("Untitled Note"))
         title_font = QFont("Sans Serif", 16, QFont.Weight.Bold)
         self.title_box.setFont(title_font)
         self.title_box.setStyleSheet("QLineEdit { border: none; padding: 10px; }")
@@ -583,7 +610,7 @@ class MainWindow(QMainWindow):
         
         # Menu Bar
         menu_bar = self.menuBar()
-        file_menu = menu_bar.addMenu("File")
+        file_menu = menu_bar.addMenu(_("File"))
         
         file_menu.addAction(self.new_action)
         file_menu.addAction(self.open_action)
@@ -595,7 +622,7 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(self.exit_action)
         
-        edit_menu = menu_bar.addMenu("Edit")
+        edit_menu = menu_bar.addMenu(_("Edit"))
         edit_menu.addAction(self.bold_action)
         edit_menu.addAction(self.italic_action)
         edit_menu.addAction(self.link_action)
@@ -607,7 +634,10 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(self.sentence_action)
         
         # View Menu
-        view_menu = menu_bar.addMenu("View")
+        view_menu = menu_bar.addMenu(_("View"))
+        self.language_menu = QMenu(_("Language"), self)
+        view_menu.addMenu(self.language_menu)
+        self.populate_language_menu()
         view_menu.addAction(self.toggle_preview_action)
         view_menu.addAction(self.toggle_wrap_action)
         view_menu.addAction(self.toggle_hide_empty_action)
@@ -616,12 +646,12 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self.zoom_out_action)
         view_menu.addSeparator()
         
-        customize_action = QAction("Customize Toolbar...", self)
+        customize_action = QAction(_("Customize Toolbar..."), self)
         customize_action.triggered.connect(self.customize_toolbar)
         view_menu.addAction(customize_action)
         
         # Help Menu
-        help_menu = menu_bar.addMenu("Help")
+        help_menu = menu_bar.addMenu(_("Help"))
         help_menu.addAction(self.about_action)
         
         # Window attributes
@@ -677,29 +707,29 @@ class MainWindow(QMainWindow):
         chars = len(text)
         words = len(text.split())
         
-        status = "Unsaved" if self.editor.document().isModified() else "Saved"
+        status = _("Unsaved") if self.editor.document().isModified() else _("Saved")
         size_str = ""
         date_info = ""
         
         if self.current_file and os.path.exists(self.current_file):
             size_bytes = os.path.getsize(self.current_file)
             if size_bytes < 1024:
-                size_str = f"  |  Size: {size_bytes} B"
+                size_str = f"  |  {_('Size:')} {size_bytes} B"
             elif size_bytes < 1024 * 1024:
-                size_str = f"  |  Size: {size_bytes / 1024:.1f} KB"
+                size_str = f"  |  {_('Size:')} {size_bytes / 1024:.1f} KB"
             else:
-                size_str = f"  |  Size: {size_bytes / (1024 * 1024):.2f} MB"
+                size_str = f"  |  {_('Size:')} {size_bytes / (1024 * 1024):.2f} MB"
                 
             try:
                 stat = os.stat(self.current_file)
                 c_time = datetime.datetime.fromtimestamp(stat.st_ctime).strftime("%d/%m/%Y %H:%M")
                 m_time = datetime.datetime.fromtimestamp(stat.st_mtime).strftime("%d/%m/%Y %H:%M")
-                date_info = f"  |  Created: {c_time}  |  Modified: {m_time}"
+                date_info = f"  |  {_('Created:')} {c_time}  |  {_('Modified:')} {m_time}"
             except Exception:
                 pass
                 
-        word_text = "1 word" if words == 1 else f"{words} words"
-        char_text = "1 character" if chars == 1 else f"{chars} characters"
+        word_text = _("1 word") if words == 1 else _("{} words").format(words)
+        char_text = _("1 character") if chars == 1 else _("{} characters").format(chars)
         self.stats_label.setText(f"{status}{date_info}  |  {word_text}  |  {char_text}{size_str}")
 
     def on_title_changed(self):
@@ -829,11 +859,8 @@ class MainWindow(QMainWindow):
         self._save_workspace_config()
 
     def show_about(self):
-        text = """<h3>Felsic Notes</h3>
-        <p>A fast, portable, and lightweight Markdown note-taking app.</p>
-        <p>Built with PyQt6 and copious amounts of AI.</p>
-        <p><a href="https://github.com/deomkds/felsic-notes">GitHub Repository</a></p>"""
-        QMessageBox.about(self, "About Felsic Notes", text)
+        text = _("<h3>Felsic Notes</h3>\n<p>A fast, portable, and lightweight Markdown note-taking app.</p>\n<p>Built with PyQt6 and copious amounts of AI.</p>\n<p><a href=\"https://github.com/deomkds/felsic-notes\">GitHub Repository</a></p>")
+        QMessageBox.about(self, _("About Felsic Notes"), text)
 
     def sync_tree_selection(self, path=None):
         if self.current_file:
@@ -965,7 +992,7 @@ class MainWindow(QMainWindow):
 
     def open_file(self):
         if self.maybe_save():
-            filename, _ = QFileDialog.getOpenFileName(
+            filename, _filter = QFileDialog.getOpenFileName(
                 self, "Open Document", "", "Markdown Files (*.md);;All Files (*)"
             )
             
@@ -974,7 +1001,7 @@ class MainWindow(QMainWindow):
 
     def open_folder(self):
         if self.maybe_save():
-            folder = QFileDialog.getExistingDirectory(self, "Open Folder")
+            folder = QFileDialog.getExistingDirectory(self, _("Open Folder"))
             if folder:
                 self.open_workspace(folder)
 
@@ -1007,37 +1034,37 @@ class MainWindow(QMainWindow):
             file_path = self.file_model.filePath(source_index)
             base_dir = os.path.dirname(file_path)
             
-            new_note_action = QAction("New Note...", self)
+            new_note_action = QAction(_("New Note..."), self)
             new_note_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_note(d))
             menu.addAction(new_note_action)
             
-            new_folder_action = QAction("New Folder...", self)
+            new_folder_action = QAction(_("New Folder..."), self)
             new_folder_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_folder(d))
             menu.addAction(new_folder_action)
             
             menu.addSeparator()
             
-            rename_action = QAction("Rename...", self)
+            rename_action = QAction(_("Rename..."), self)
             rename_action.triggered.connect(lambda checked=False, p=file_path: self.rename_note(p))
             menu.addAction(rename_action)
             
-            move_action = QAction("Move To...", self)
+            move_action = QAction(_("Move To..."), self)
             move_action.triggered.connect(lambda checked=False, p=file_path: self.move_note(p))
             menu.addAction(move_action)
             
-            dup_action = QAction("Duplicate", self)
+            dup_action = QAction(_("Duplicate"), self)
             dup_action.triggered.connect(lambda checked=False, p=file_path: self.duplicate_note(p))
             menu.addAction(dup_action)
             
             menu.addSeparator()
             
-            delete_action = QAction("Delete", self)
+            delete_action = QAction(_("Delete"), self)
             delete_action.triggered.connect(lambda checked=False, p=file_path: self.delete_note(p))
             menu.addAction(delete_action)
             
             menu.addSeparator()
             
-            reveal_action = QAction("Reveal in File Explorer", self)
+            reveal_action = QAction(_("Reveal in File Explorer"), self)
             reveal_action.triggered.connect(lambda checked=False, p=file_path: self.reveal_in_explorer(p))
             menu.addAction(reveal_action)
             
@@ -1046,58 +1073,58 @@ class MainWindow(QMainWindow):
             if source_index.isValid() and self.file_model.isDir(source_index):
                 base_dir = self.file_model.filePath(source_index)
                 
-                new_note_action = QAction("New Note...", self)
+                new_note_action = QAction(_("New Note..."), self)
                 new_note_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_note(d))
                 menu.addAction(new_note_action)
                 
-                new_folder_action = QAction("New Folder...", self)
+                new_folder_action = QAction(_("New Folder..."), self)
                 new_folder_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_folder(d))
                 menu.addAction(new_folder_action)
                 
                 menu.addSeparator()
                 
-                rename_dir_action = QAction("Rename Folder...", self)
+                rename_dir_action = QAction(_("Rename Folder..."), self)
                 rename_dir_action.triggered.connect(lambda checked=False, p=base_dir: self.rename_folder(p))
                 menu.addAction(rename_dir_action)
                 
-                move_dir_action = QAction("Move Folder To...", self)
+                move_dir_action = QAction(_("Move Folder To..."), self)
                 move_dir_action.triggered.connect(lambda checked=False, p=base_dir: self.move_folder(p))
                 menu.addAction(move_dir_action)
                 
                 menu.addSeparator()
                 
-                expand_action = QAction("Expand All", self)
+                expand_action = QAction(_("Expand All"), self)
                 expand_action.triggered.connect(lambda checked=False, idx=proxy_index: self.tree_view.expandRecursively(idx))
                 menu.addAction(expand_action)
                 
-                collapse_action = QAction("Collapse All", self)
+                collapse_action = QAction(_("Collapse All"), self)
                 collapse_action.triggered.connect(lambda checked=False, idx=proxy_index: self.collapse_recursively(idx))
                 menu.addAction(collapse_action)
                 
                 menu.addSeparator()
                 
-                delete_dir_action = QAction("Delete Folder", self)
+                delete_dir_action = QAction(_("Delete Folder"), self)
                 delete_dir_action.triggered.connect(lambda checked=False, p=base_dir: self.delete_folder(p))
                 menu.addAction(delete_dir_action)
                 
                 menu.addSeparator()
                 
-                reveal_action = QAction("Reveal in File Explorer", self)
+                reveal_action = QAction(_("Reveal in File Explorer"), self)
                 reveal_action.triggered.connect(lambda checked=False, p=base_dir: self.reveal_in_explorer(p))
                 menu.addAction(reveal_action)
             else:
                 base_dir = self.current_folder
-                new_note_action = QAction("New Note...", self)
+                new_note_action = QAction(_("New Note..."), self)
                 new_note_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_note(d))
                 menu.addAction(new_note_action)
                 
-                new_folder_action = QAction("New Folder...", self)
+                new_folder_action = QAction(_("New Folder..."), self)
                 new_folder_action.triggered.connect(lambda checked=False, d=base_dir: self.create_new_folder(d))
                 menu.addAction(new_folder_action)
                 
                 menu.addSeparator()
                 
-                reveal_action = QAction("Reveal in File Explorer", self)
+                reveal_action = QAction(_("Reveal in File Explorer"), self)
                 reveal_action.triggered.connect(lambda checked=False, p=base_dir: self.reveal_in_explorer(p))
                 menu.addAction(reveal_action)
         
@@ -1119,7 +1146,7 @@ class MainWindow(QMainWindow):
 
     def rename_note(self, source_path):
         current_name = os.path.basename(source_path)
-        new_name, ok = QInputDialog.getText(self, "Rename Note", "New Name:", text=current_name)
+        new_name, ok = QInputDialog.getText(self, _("Rename Note"), _("New Name:"), text=current_name)
         
         if ok and new_name.strip() and new_name != current_name:
             new_name = new_name.strip()
@@ -1128,7 +1155,7 @@ class MainWindow(QMainWindow):
             
             dest_path = os.path.join(os.path.dirname(source_path), new_name)
             if os.path.exists(dest_path):
-                QMessageBox.warning(self, "Error", "A file with this name already exists.")
+                QMessageBox.warning(self, _("Error"), _("A file with this name already exists."))
                 return
                 
             try:
@@ -1139,7 +1166,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Error", f"Failed to rename note:\n{e}")
 
     def move_note(self, source_path):
-        dest_folder = QFileDialog.getExistingDirectory(self, "Select Destination Folder", self.current_folder)
+        dest_folder = QFileDialog.getExistingDirectory(self, _("Select Destination Folder"), self.current_folder)
         if dest_folder:
             filename = os.path.basename(source_path)
             dest_path = os.path.join(dest_folder, filename)
@@ -1147,7 +1174,7 @@ class MainWindow(QMainWindow):
             if os.path.exists(dest_path):
                 if dest_path == source_path:
                     return
-                QMessageBox.warning(self, "Error", "A file with this name already exists in the destination.")
+                QMessageBox.warning(self, _("Error"), _("A file with this name already exists in the destination."))
                 return
                 
             try:
@@ -1178,12 +1205,12 @@ class MainWindow(QMainWindow):
 
     def rename_folder(self, source_path):
         current_name = os.path.basename(source_path)
-        new_name, ok = QInputDialog.getText(self, "Rename Folder", "New Name:", text=current_name)
+        new_name, ok = QInputDialog.getText(self, _("Rename Folder"), _("New Name:"), text=current_name)
         if ok and new_name.strip() and new_name != current_name:
             new_name = new_name.strip()
             dest_path = os.path.join(os.path.dirname(source_path), new_name)
             if os.path.exists(dest_path):
-                QMessageBox.warning(self, "Error", "A folder with this name already exists.")
+                QMessageBox.warning(self, _("Error"), _("A folder with this name already exists."))
                 return
             try:
                 os.rename(source_path, dest_path)
@@ -1195,13 +1222,13 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Error", f"Failed to rename folder:\n{e}")
 
     def move_folder(self, source_path):
-        dest_folder = QFileDialog.getExistingDirectory(self, "Select Destination Folder", self.current_folder)
+        dest_folder = QFileDialog.getExistingDirectory(self, _("Select Destination Folder"), self.current_folder)
         if dest_folder:
             foldername = os.path.basename(source_path)
             dest_path = os.path.join(dest_folder, foldername)
             if os.path.exists(dest_path):
                 if dest_path == source_path: return
-                QMessageBox.warning(self, "Error", "A folder with this name already exists in the destination.")
+                QMessageBox.warning(self, _("Error"), _("A folder with this name already exists in the destination."))
                 return
             try:
                 shutil.move(source_path, dest_path)
@@ -1225,7 +1252,7 @@ class MainWindow(QMainWindow):
     def delete_folder(self, source_path):
         answer = QMessageBox.warning(
             self, "Confirm Delete", 
-            f"Are you sure you want to permanently delete this folder and ALL ITS CONTENTS:\n{os.path.basename(source_path)}?",
+            _("Are you sure you want to permanently delete this folder and ALL ITS CONTENTS:\n{}?").format(os.path.basename(source_path)),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
@@ -1243,7 +1270,7 @@ class MainWindow(QMainWindow):
     def delete_note(self, source_path):
         answer = QMessageBox.warning(
             self, "Confirm Delete", 
-            f"Are you sure you want to permanently delete:\n{os.path.basename(source_path)}?",
+            _("Are you sure you want to permanently delete:\n{}?").format(os.path.basename(source_path)),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
@@ -1259,7 +1286,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Error", f"Failed to delete note:\n{e}")
 
     def create_new_note(self, base_dir):
-        text, ok = QInputDialog.getText(self, "New Note", "Note Name:")
+        text, ok = QInputDialog.getText(self, _("New Note"), _("Note Name:"))
         if ok and text.strip():
             filename = text.strip()
             if not filename.endswith(".md") and '.' not in filename:
@@ -1268,7 +1295,7 @@ class MainWindow(QMainWindow):
             filepath = os.path.join(base_dir, filename)
             
             if os.path.exists(filepath):
-                QMessageBox.warning(self, "Error", "A file with this name already exists.")
+                QMessageBox.warning(self, _("Error"), _("A file with this name already exists."))
                 return
                 
             try:
@@ -1283,13 +1310,13 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Error", f"Failed to create note:\n{e}")
 
     def create_new_folder(self, base_dir):
-        text, ok = QInputDialog.getText(self, "New Folder", "Folder Name:")
+        text, ok = QInputDialog.getText(self, _("New Folder"), _("Folder Name:"))
         if ok and text.strip():
             foldername = text.strip()
             filepath = os.path.join(base_dir, foldername)
             
             if os.path.exists(filepath):
-                QMessageBox.warning(self, "Error", "A folder with this name already exists.")
+                QMessageBox.warning(self, _("Error"), _("A folder with this name already exists."))
                 return
                 
             try:
@@ -1349,13 +1376,13 @@ class MainWindow(QMainWindow):
                 
             self.stacked_widget.setCurrentIndex(2)
             self.title_box.hide()
-            item_text = "1 item" if count == 1 else f"{count} items"
-            self.ms_label.setText(f"{item_text} selected")
+            item_text = _("1 item") if count == 1 else _("{} items").format(count)
+            self.ms_label.setText(_("{} selected").format(item_text))
             
-            btn_item_text = "Item" if count == 1 else "Items"
-            self.btn_move.setText(f"Move {btn_item_text}...")
-            self.btn_copy.setText(f"Copy {btn_item_text}...")
-            self.btn_delete.setText(f"Delete {btn_item_text}")
+            btn_item_text = _("Item") if count == 1 else _("Items")
+            self.btn_move.setText(_("Move {}...").format(btn_item_text))
+            self.btn_copy.setText(_("Copy {}...").format(btn_item_text))
+            self.btn_delete.setText(_("Delete {}").format(btn_item_text))
             
             if total_size < 1024:
                 size_str = f"{total_size} B"
@@ -1364,7 +1391,7 @@ class MainWindow(QMainWindow):
             else:
                 size_str = f"{total_size / (1024 * 1024):.2f} MB"
                 
-            self.stats_label.setText(f"{item_text} selected  |  Total Size: {size_str}")
+            self.stats_label.setText(f"{item_text} {_('selected')}  |  {_('Total Size:')} {size_str}")
             
         elif count == 1:
             path = self.selected_batch_files[0]
@@ -1385,13 +1412,13 @@ class MainWindow(QMainWindow):
     def batch_group(self):
         if not self.selected_batch_files: return
         files_to_process = list(self.selected_batch_files)
-        foldername, ok = QInputDialog.getText(self, "New Folder from Selection", "Folder Name:")
+        foldername, ok = QInputDialog.getText(self, _("New Folder from Selection"), _("Folder Name:"))
         if ok and foldername.strip():
             foldername = foldername.strip()
             dest_folder = os.path.join(self.current_folder, foldername)
             
             if os.path.exists(dest_folder):
-                QMessageBox.warning(self, "Error", "A folder with this name already exists.")
+                QMessageBox.warning(self, _("Error"), _("A folder with this name already exists."))
                 return
                 
             try:
@@ -1418,7 +1445,7 @@ class MainWindow(QMainWindow):
     def batch_move(self):
         if not self.selected_batch_files: return
         files_to_process = list(self.selected_batch_files)
-        dest_folder = QFileDialog.getExistingDirectory(self, "Select Destination Folder", self.current_folder)
+        dest_folder = QFileDialog.getExistingDirectory(self, _("Select Destination Folder"), self.current_folder)
         if dest_folder:
             self.tree_view.clearSelection()
             moved_count = 0
@@ -1443,7 +1470,7 @@ class MainWindow(QMainWindow):
     def batch_copy(self):
         if not self.selected_batch_files: return
         files_to_process = list(self.selected_batch_files)
-        dest_folder = QFileDialog.getExistingDirectory(self, "Select Destination Folder", self.current_folder)
+        dest_folder = QFileDialog.getExistingDirectory(self, _("Select Destination Folder"), self.current_folder)
         if dest_folder:
             self.tree_view.clearSelection()
             copied_count = 0
@@ -1489,7 +1516,7 @@ class MainWindow(QMainWindow):
         item_text = "1 item" if count == 1 else f"{count} items"
         answer = QMessageBox.warning(
             self, "Confirm Delete", 
-            f"Are you sure you want to permanently delete {item_text}?",
+            _("Are you sure you want to permanently delete {}?").format(item_text),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
@@ -1530,7 +1557,7 @@ class MainWindow(QMainWindow):
             if self.current_folder:
                 dest_path = os.path.join(self.current_folder, new_title + '.md')
                 if os.path.exists(dest_path):
-                     QMessageBox.warning(self, "Error", "A note with this name already exists in the workspace.")
+                     QMessageBox.warning(self, _("Error"), _("A note with this name already exists in the workspace."))
                      return False
                 return self._save_to_path(dest_path)
             else:
@@ -1545,7 +1572,7 @@ class MainWindow(QMainWindow):
                 # Name changed visually
                 dest_path = os.path.join(os.path.dirname(self.current_file), new_title + '.md')
                 if os.path.exists(dest_path):
-                     QMessageBox.warning(self, "Error", "A note with this name already exists. Choose another title.")
+                     QMessageBox.warning(self, _("Error"), _("A note with this name already exists. Choose another title."))
                      return False
                      
                 old_path = self.current_file
@@ -1559,7 +1586,7 @@ class MainWindow(QMainWindow):
                 return success
 
     def save_file_as(self):
-        filename, _ = QFileDialog.getSaveFileName(
+        filename, _filter = QFileDialog.getSaveFileName(
             self, "Save Document", "", "Markdown Files (*.md);;All Files (*)"
         )
         if filename:
@@ -1577,8 +1604,8 @@ class MainWindow(QMainWindow):
         if self.current_folder:
             default_path = os.path.join(self.current_folder, default_path)
             
-        filename, _ = QFileDialog.getSaveFileName(
-            self, "Export PDF", default_path, "PDF Files (*.pdf)"
+        filename, _filter = QFileDialog.getSaveFileName(
+            self, _("Export PDF"), default_path, _("PDF Files (*.pdf)")
         )
         if filename:
             if not filename.endswith('.pdf') and '.' not in os.path.basename(filename):
@@ -1611,8 +1638,8 @@ class MainWindow(QMainWindow):
                 # Custom Success Message Box with "Open File" button
                 msg_box = QMessageBox(self)
                 msg_box.setIcon(QMessageBox.Icon.Information)
-                msg_box.setWindowTitle("Export PDF")
-                msg_box.setText("PDF successfully exported.")
+                msg_box.setWindowTitle(_("Export PDF"))
+                msg_box.setText(_("PDF successfully exported."))
                 
                 open_button = msg_box.addButton("Open File", QMessageBox.ButtonRole.ActionRole)
                 msg_box.addButton(QMessageBox.StandardButton.Ok)
@@ -1661,6 +1688,28 @@ class MainWindow(QMainWindow):
             
         return True
 
+
+    def populate_language_menu(self):
+        settings = QSettings("Felsic", "FelsicNotes")
+        current_lang = settings.value("language", "en")
+        
+        import glob
+        locale_files = glob.glob(os.path.join(os.path.dirname(__file__), 'locales', '*.json'))
+        for lf in locale_files:
+            lang_code = os.path.basename(lf).replace('.json', '')
+            action = QAction(lang_code, self)
+            action.setCheckable(True)
+            if lang_code == current_lang:
+                action.setChecked(True)
+            action.triggered.connect(lambda checked, lc=lang_code: self.change_language(lc))
+            self.language_menu.addAction(action)
+
+    def change_language(self, lang_code):
+        settings = QSettings("Felsic", "FelsicNotes")
+        settings.setValue("language", lang_code)
+        QMessageBox.information(self, _("Restart Required"), _("Please restart the application for language changes to take effect."))
+        self.close()
+
     def closeEvent(self, event):
         if self.maybe_save():
             self._save_workspace_config()
@@ -1673,6 +1722,16 @@ class MainWindow(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+    
+    settings = QSettings("Felsic", "FelsicNotes")
+    lang = settings.value("language", "en")
+    app_translator.load(lang)
+    
+    from PyQt6.QtCore import QTranslator, QLibraryInfo
+    qt_translator = QTranslator()
+    if qt_translator.load("qtbase_" + lang, QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):
+        app.installTranslator(qt_translator)
+
     
     icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.svg")
     if os.path.exists(icon_path):

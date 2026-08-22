@@ -420,6 +420,33 @@ void MainWindow::onFileSelected(const QItemSelection &selected, const QItemSelec
     }
 }
 
+void MainWindow::newFile()
+{
+    if (editor->document()->isModified()) {
+        QMessageBox::StandardButton res = QMessageBox::warning(this, tr("Unsaved Changes"),
+            tr("You have unsaved changes. Do you want to save before creating a new file?"),
+            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+        if (res == QMessageBox::Yes) {
+            saveFile();
+        } else if (res == QMessageBox::Cancel) {
+            return;
+        }
+    }
+    
+    currentFilePath.clear();
+    titleBox->blockSignals(true);
+    titleBox->setText("");
+    titleBox->blockSignals(false);
+    
+    editor->clear();
+    editor->document()->setModified(false);
+    
+    // Unselect anything in tree
+    treeView->clearSelection();
+    
+    updateStats();
+}
+
 void MainWindow::saveFile()
 {
     QString newTitle = titleBox->text().trimmed();

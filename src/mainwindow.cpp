@@ -13,14 +13,29 @@
 #include <QStatusBar>
 #include <QDateTime>
 #include <QVBoxLayout>
+#include <QSettings>
 #include "pdf_generator.h"
+#include "customize_toolbar_dialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setupUi();
     createActions();
-    createToolBars();
+    
+    QSettings settings("Felsic", "FelsicNotes");
+    QStringList savedLayout = settings.value("toolbar_layout").toStringList();
+    if (savedLayout.isEmpty()) {
+        currentToolbarLayout = QStringList{
+            "save_file", "save_as", "export_pdf", "spacer",
+            "zoom_in", "zoom_out", "separator", "bold", "italic", "link", "code", "spacer",
+            "preview", "wrap_text"
+        };
+    } else {
+        currentToolbarLayout = savedLayout;
+    }
+    
+    buildToolbar();
     
     pdfGen = new PdfGenerator(this);
     connect(pdfGen, &PdfGenerator::finished, this, &MainWindow::onPdfGenerated);
@@ -29,8 +44,8 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowIcon(QIcon(":/window.png"));
     
     // Load global settings
-    QSettings settings("Felsic", "FelsicNotes");
-    QString lastWorkspace = settings.value("last_workspace", "").toString();
+    QSettings globalSettings("Felsic", "FelsicNotes");
+    QString lastWorkspace = globalSettings.value("last_workspace", "").toString();
     
     if (!lastWorkspace.isEmpty() && QDir(lastWorkspace).exists()) {
         proxyModel->updateWorkspaceIndex(lastWorkspace);
@@ -48,6 +63,11 @@ MainWindow::~MainWindow()
 void MainWindow::setupUi()
 {
     setWindowTitle(tr("Felsic Notes"));
+    
+    // Toolbar
+    mainToolBar = addToolBar(tr("Main Toolbar"));
+    mainToolBar->setMovable(false);
+    
     // --- Layout setup ---
     mainSplitter = new QSplitter(Qt::Horizontal, this);
     
@@ -157,136 +177,188 @@ void MainWindow::setupUi()
 
 void MainWindow::createActions()
 {
-    // File Actions
-    actionNew = new QAction(QIcon::fromTheme("document-new"), tr("&New"), this);
-    actionNew->setShortcut(QKeySequence::New);
-    
-    actionOpen = new QAction(QIcon::fromTheme("document-open"), tr("&Open..."), this);
-    actionOpen->setShortcut(QKeySequence::Open);
-    connect(actionOpen, &QAction::triggered, this, &MainWindow::openFile);
-    
-    actionOpenFolder = new QAction(QIcon::fromTheme("folder-open"), tr("Open &Folder..."), this);
-    connect(actionOpenFolder, &QAction::triggered, this, &MainWindow::openFolder);
-    
-    actionSave = new QAction(QIcon::fromTheme("document-save"), tr("&Save"), this);
-    actionSave->setShortcut(QKeySequence::Save);
-    connect(actionSave, &QAction::triggered, this, &MainWindow::saveFile);
-    
-    actionSaveAs = new QAction(QIcon::fromTheme("document-save-as"), tr("Save &As..."), this);
-    actionSaveAs->setShortcut(QKeySequence::SaveAs);
-    connect(actionSaveAs, &QAction::triggered, this, &MainWindow::saveFileAs);
-    
-    actionExportPdf = new QAction(QIcon::fromTheme("document-print"), tr("Export to &PDF..."), this);
-    connect(actionExportPdf, &QAction::triggered, this, &MainWindow::exportToPdf);
-    
-    actionExit = new QAction(QIcon::fromTheme("application-exit"), tr("E&xit"), this);
-    actionExit->setShortcut(QKeySequence::Quit);
-    connect(actionExit, &QAction::triggered, this, &QWidget::close);
-    
-    // View Actions
-    actionTogglePreview = new QAction(QIcon::fromTheme("view-preview"), tr("Toggle &Preview"), this);
-    actionTogglePreview->setCheckable(true);
-    actionTogglePreview->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_P));
-    connect(actionTogglePreview, &QAction::triggered, this, &MainWindow::togglePreview);
-    
-    actionToggleWrap = new QAction(tr("Word &Wrap"), this);
-    actionToggleWrap->setCheckable(true);
-    actionToggleWrap->setChecked(true); // Default
-    connect(actionToggleWrap, &QAction::triggered, this, &MainWindow::toggleWordWrap);
-    
-    actionToggleHideEmpty = new QAction(tr("&Hide Empty Folders"), this);
-    actionToggleHideEmpty->setCheckable(true);
-    connect(actionToggleHideEmpty, &QAction::triggered, this, &MainWindow::toggleHideEmpty);
-    
-    actionZoomIn = new QAction(QIcon::fromTheme("zoom-in"), tr("Zoom &In"), this);
-    actionZoomIn->setShortcut(QKeySequence::ZoomIn);
-    connect(actionZoomIn, &QAction::triggered, this, &MainWindow::zoomIn);
-    
-    actionZoomOut = new QAction(QIcon::fromTheme("zoom-out"), tr("Zoom &Out"), this);
-    actionZoomOut->setShortcut(QKeySequence::ZoomOut);
-    connect(actionZoomOut, &QAction::triggered, this, &MainWindow::zoomOut);
-    
-    actionCustomizeToolbar = new QAction(tr("&Customize Toolbar..."), this);
-    connect(actionCustomizeToolbar, &QAction::triggered, this, &MainWindow::customizeToolbar);
-    
-    // Help Actions
-    actionAbout = new QAction(QIcon::fromTheme("help-about"), tr("&About"), this);
-    connect(actionAbout, &QAction::triggered, this, &MainWindow::showAbout);
-    
-    // Formatting Actions
-    actionBold = new QAction(QIcon::fromTheme("format-text-bold"), tr("&Bold"), this);
-    connect(actionBold, &QAction::triggered, this, &MainWindow::insertBold);
-    
-    actionItalic = new QAction(QIcon::fromTheme("format-text-italic"), tr("&Italic"), this);
-    connect(actionItalic, &QAction::triggered, this, &MainWindow::insertItalic);
-    
-    actionLink = new QAction(QIcon::fromTheme("insert-link"), tr("Insert &Link"), this);
-    connect(actionLink, &QAction::triggered, this, &MainWindow::insertLink);
-    
-    actionCode = new QAction(QIcon::fromTheme("text-x-generic"), tr("&Code"), this);
-    connect(actionCode, &QAction::triggered, this, &MainWindow::insertCode);
-    
-    actionUpper = new QAction(tr("&UPPERCASE"), this);
-    connect(actionUpper, &QAction::triggered, this, &MainWindow::changeCaseUpper);
-    
-    actionLower = new QAction(tr("&lowercase"), this);
-    connect(actionLower, &QAction::triggered, this, &MainWindow::changeCaseLower);
-    
-    actionTitle = new QAction(tr("&Title Case"), this);
-    connect(actionTitle, &QAction::triggered, this, &MainWindow::changeCaseTitle);
-    
-    actionSentence = new QAction(tr("&Sentence case"), this);
-    connect(actionSentence, &QAction::triggered, this, &MainWindow::changeCaseSentence);
-    
-    // Menus
+    // File Menu
     QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
-    fileMenu->addAction(actionNew);
-    fileMenu->addAction(actionOpen);
-    fileMenu->addAction(actionOpenFolder);
-    fileMenu->addSeparator();
-    fileMenu->addAction(actionSave);
-    fileMenu->addAction(actionSaveAs);
-    fileMenu->addAction(actionExportPdf);
-    fileMenu->addSeparator();
-    fileMenu->addAction(actionExit);
     
+    newAction = new QAction(tr("&New File"), this);
+    newAction->setShortcut(QKeySequence::New);
+    connect(newAction, &QAction::triggered, this, &MainWindow::newFile);
+    fileMenu->addAction(newAction);
+    
+    openAction = new QAction(tr("&Open File..."), this);
+    openAction->setShortcut(QKeySequence::Open);
+    connect(openAction, &QAction::triggered, this, &MainWindow::openFile);
+    fileMenu->addAction(openAction);
+    
+    openFolderAction = new QAction(tr("Open &Folder..."), this);
+    connect(openFolderAction, &QAction::triggered, this, &MainWindow::openFolder);
+    fileMenu->addAction(openFolderAction);
+    
+    fileMenu->addSeparator();
+    
+    saveAction = new QAction(tr("&Save"), this);
+    saveAction->setShortcut(QKeySequence::Save);
+    connect(saveAction, &QAction::triggered, this, &MainWindow::saveFile);
+    fileMenu->addAction(saveAction);
+    
+    saveAsAction = new QAction(tr("Save &As..."), this);
+    saveAsAction->setShortcut(QKeySequence::SaveAs);
+    connect(saveAsAction, &QAction::triggered, this, &MainWindow::saveFileAs);
+    fileMenu->addAction(saveAsAction);
+    
+    exportPdfAction = new QAction(tr("Export to &PDF"), this);
+    connect(exportPdfAction, &QAction::triggered, this, &MainWindow::exportToPdf);
+    fileMenu->addAction(exportPdfAction);
+    
+    fileMenu->addSeparator();
+    
+    exitAction = new QAction(tr("E&xit"), this);
+    exitAction->setShortcut(QKeySequence::Quit);
+    connect(exitAction, &QAction::triggered, this, &QWidget::close);
+    fileMenu->addAction(exitAction);
+
+    // Edit Menu
     QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
-    editMenu->addAction(actionBold);
-    editMenu->addAction(actionItalic);
-    editMenu->addAction(actionLink);
-    editMenu->addAction(actionCode);
+    
+    boldAction = new QAction(tr("&Bold"), this);
+    boldAction->setShortcut(QKeySequence::Bold);
+    connect(boldAction, &QAction::triggered, this, &MainWindow::insertBold);
+    editMenu->addAction(boldAction);
+    
+    italicAction = new QAction(tr("&Italic"), this);
+    italicAction->setShortcut(QKeySequence::Italic);
+    connect(italicAction, &QAction::triggered, this, &MainWindow::insertItalic);
+    editMenu->addAction(italicAction);
+    
+    linkAction = new QAction(tr("&Link"), this);
+    linkAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_K));
+    connect(linkAction, &QAction::triggered, this, &MainWindow::insertLink);
+    editMenu->addAction(linkAction);
+    
+    codeAction = new QAction(tr("&Code"), this);
+    codeAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
+    connect(codeAction, &QAction::triggered, this, &MainWindow::insertCode);
+    editMenu->addAction(codeAction);
+    
     editMenu->addSeparator();
-    editMenu->addAction(actionUpper);
-    editMenu->addAction(actionLower);
-    editMenu->addAction(actionTitle);
-    editMenu->addAction(actionSentence);
     
+    upperAction = new QAction(tr("UPPER CASE"), this);
+    upperAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_U));
+    connect(upperAction, &QAction::triggered, this, &MainWindow::changeCaseUpper);
+    editMenu->addAction(upperAction);
+    
+    lowerAction = new QAction(tr("lower case"), this);
+    lowerAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_U));
+    connect(lowerAction, &QAction::triggered, this, &MainWindow::changeCaseLower);
+    editMenu->addAction(lowerAction);
+    
+    titleAction = new QAction(tr("Title Case"), this);
+    titleAction->setShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_U));
+    connect(titleAction, &QAction::triggered, this, &MainWindow::changeCaseTitle);
+    editMenu->addAction(titleAction);
+    
+    sentenceAction = new QAction(tr("Sentence case"), this);
+    connect(sentenceAction, &QAction::triggered, this, &MainWindow::changeCaseSentence);
+    editMenu->addAction(sentenceAction);
+    
+    // View Menu
     QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
-    viewMenu->addAction(actionTogglePreview);
-    viewMenu->addAction(actionToggleWrap);
-    viewMenu->addAction(actionToggleHideEmpty);
-    viewMenu->addSeparator();
-    viewMenu->addAction(actionZoomIn);
-    viewMenu->addAction(actionZoomOut);
-    viewMenu->addSeparator();
-    viewMenu->addAction(actionCustomizeToolbar);
     
+    togglePreviewAction = new QAction(tr("Toggle &Preview"), this);
+    togglePreviewAction->setCheckable(true);
+    togglePreviewAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_P));
+    connect(togglePreviewAction, &QAction::toggled, this, &MainWindow::togglePreview);
+    viewMenu->addAction(togglePreviewAction);
+    
+    wrapTextAction = new QAction(tr("&Word Wrap"), this);
+    wrapTextAction->setCheckable(true);
+    wrapTextAction->setChecked(true);
+    connect(wrapTextAction, &QAction::toggled, this, [this](bool checked) {
+        editor->setLineWrapMode(checked ? QPlainTextEdit::WidgetWidth : QPlainTextEdit::NoWrap);
+    });
+    viewMenu->addAction(wrapTextAction);
+    
+    hideEmptyAction = new QAction(tr("&Hide Empty Folders"), this);
+    hideEmptyAction->setCheckable(true);
+    connect(hideEmptyAction, &QAction::toggled, this, [this](bool checked) {
+        proxyModel->setHideEmptyFolders(checked);
+    });
+    viewMenu->addAction(hideEmptyAction);
+    
+    viewMenu->addSeparator();
+    
+    zoomInAction = new QAction(tr("Zoom &In"), this);
+    zoomInAction->setShortcut(QKeySequence::ZoomIn);
+    connect(zoomInAction, &QAction::triggered, this, &MainWindow::zoomIn);
+    viewMenu->addAction(zoomInAction);
+    
+    zoomOutAction = new QAction(tr("Zoom &Out"), this);
+    zoomOutAction->setShortcut(QKeySequence::ZoomOut);
+    connect(zoomOutAction, &QAction::triggered, this, &MainWindow::zoomOut);
+    viewMenu->addAction(zoomOutAction);
+    
+    viewMenu->addSeparator();
+    
+    QAction *customizeToolbarAction = new QAction(tr("Customize &Toolbar..."), this);
+    connect(customizeToolbarAction, &QAction::triggered, this, &MainWindow::customizeToolbar);
+    viewMenu->addAction(customizeToolbarAction);
+
+    // Help Menu
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
-    helpMenu->addAction(actionAbout);
+    
+    aboutAction = new QAction(tr("&About Felsic Notes"), this);
+    connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
+    helpMenu->addAction(aboutAction);
+    
+    // Populate Catalog
+    catalog.insert("new_file", qMakePair(tr("New File"), newAction));
+    catalog.insert("open_file", qMakePair(tr("Open File..."), openAction));
+    catalog.insert("open_folder", qMakePair(tr("Open Folder..."), openFolderAction));
+    catalog.insert("exit", qMakePair(tr("Quit"), exitAction));
+    catalog.insert("save_file", qMakePair(tr("Save"), saveAction));
+    catalog.insert("save_as", qMakePair(tr("Save As..."), saveAsAction));
+    catalog.insert("export_pdf", qMakePair(tr("Export to PDF"), exportPdfAction));
+    
+    catalog.insert("zoom_in", qMakePair(tr("Zoom In"), zoomInAction));
+    catalog.insert("zoom_out", qMakePair(tr("Zoom Out"), zoomOutAction));
+    catalog.insert("bold", qMakePair(tr("Bold"), boldAction));
+    catalog.insert("italic", qMakePair(tr("Italic"), italicAction));
+    catalog.insert("link", qMakePair(tr("Link"), linkAction));
+    catalog.insert("code", qMakePair(tr("Code"), codeAction));
+    
+    catalog.insert("upper_case", qMakePair(tr("UPPER CASE"), upperAction));
+    catalog.insert("lower_case", qMakePair(tr("lower case"), lowerAction));
+    catalog.insert("title_case", qMakePair(tr("Title Case"), titleAction));
+    catalog.insert("sentence_case", qMakePair(tr("Sentence case"), sentenceAction));
+    
+    catalog.insert("preview", qMakePair(tr("Toggle Preview"), togglePreviewAction));
+    catalog.insert("wrap_text", qMakePair(tr("Toggle Wrap"), wrapTextAction));
+    catalog.insert("hide_empty_folders", qMakePair(tr("Hide Empty Folders"), hideEmptyAction));
+    catalog.insert("about", qMakePair(tr("About"), aboutAction));
+    
+    catalog.insert("spacer", qMakePair(tr("Space (Align Right)"), nullptr));
+    catalog.insert("separator", qMakePair(tr("Vertical Separator"), nullptr));
 }
 
-void MainWindow::createToolBars()
+void MainWindow::buildToolbar()
 {
-    QToolBar *mainToolBar = addToolBar(tr("Main Toolbar"));
-    mainToolBar->setMovable(false);
-    
-    mainToolBar->addAction(actionNew);
-    mainToolBar->addAction(actionOpenFolder);
-    mainToolBar->addAction(actionSave);
-    mainToolBar->addSeparator();
-    mainToolBar->addAction(actionTogglePreview);
-    mainToolBar->addSeparator();
-    mainToolBar->addAction(actionExportPdf);
+    mainToolBar->clear();
+    for (const QString &itemId : currentToolbarLayout) {
+        if (itemId == "spacer") {
+            QWidget *spacer = new QWidget(this);
+            spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+            mainToolBar->addWidget(spacer);
+        } else if (itemId == "separator") {
+            mainToolBar->addSeparator();
+        } else {
+            if (catalog.contains(itemId)) {
+                QAction *act = catalog.value(itemId).second;
+                if (act) {
+                    mainToolBar->addAction(act);
+                }
+            }
+        }
+    }
 }
 
 void MainWindow::onEditorTextChanged()
@@ -314,34 +386,37 @@ void MainWindow::onPdfGenerated(bool success, const QString &outputPath)
     }
 }
 
-void MainWindow::onFileSelected(const QItemSelection &selected, const QItemSelection &)
+void MainWindow::onFileSelected(const QItemSelection &selected, const QItemSelection &deselected)
 {
+    Q_UNUSED(deselected);
     if (selected.indexes().isEmpty()) return;
     
     // Reset toggle preview if it's checked
-    if (actionTogglePreview->isChecked()) {
-        actionTogglePreview->setChecked(false);
+    if (togglePreviewAction->isChecked()) {
+        togglePreviewAction->setChecked(false);
         stackedWidget->setCurrentIndex(0);
     }
     
     QModelIndex index = selected.indexes().first();
+    QFileSystemModel *model = qobject_cast<QFileSystemModel*>(proxyModel->sourceModel());
     QModelIndex sourceIndex = proxyModel->mapToSource(index);
-    QString path = fileModel->filePath(sourceIndex);
     
-    if (QFileInfo(path).isFile()) {
-        QFile file(path);
-        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            currentFilePath = path;
-            
-            // Set title box without triggering modification
-            titleBox->blockSignals(true);
-            titleBox->setText(QFileInfo(path).baseName());
-            titleBox->blockSignals(false);
-            
-            editor->setPlainText(QString::fromUtf8(file.readAll()));
-            file.close();
-            updateStats();
-        }
+    if (model->isDir(sourceIndex)) return;
+    
+    QString path = model->filePath(sourceIndex);
+    if (path.isEmpty()) return;
+    
+    QFile file(path);
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        currentFilePath = path;
+        
+        titleBox->blockSignals(true);
+        titleBox->setText(QFileInfo(path).baseName());
+        titleBox->blockSignals(false);
+        
+        editor->setPlainText(QString::fromUtf8(file.readAll()));
+        file.close();
+        updateStats();
     }
 }
 
@@ -448,16 +523,6 @@ void MainWindow::saveFileAs()
     proxyModel->addToIndex(path);
 }
 
-void MainWindow::toggleWordWrap(bool checked)
-{
-    editor->setLineWrapMode(checked ? QPlainTextEdit::WidgetWidth : QPlainTextEdit::NoWrap);
-}
-
-void MainWindow::toggleHideEmpty(bool checked)
-{
-    proxyModel->setHideEmptyFolders(checked);
-}
-
 void MainWindow::zoomIn()
 {
     QFont f = editor->font();
@@ -477,13 +542,22 @@ void MainWindow::zoomOut()
 void MainWindow::showAbout()
 {
     QMessageBox::about(this, tr("About Felsic Notes"),
-                       tr("<h2>Felsic Notes C++ Port</h2>"
-                          "<p>A lightning-fast markdown notes manager built with Qt6 and C++.</p>"));
+        tr("<h3>Felsic Notes</h3>"
+           "<p>A fast, portable, and lightweight Markdown note-taking app.</p>"
+           "<p>Built with Qt6 and copious amounts of AI.</p>"
+           "<p><a href=\"https://github.com/deomkds/felsic-notes\">GitHub Repository</a></p>"));
 }
 
 void MainWindow::customizeToolbar()
 {
-    QMessageBox::information(this, tr("Coming Soon"), tr("Toolbar customization dialog will be implemented in the next step!"));
+    CustomizeToolbarDialog dialog(catalog, currentToolbarLayout, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        currentToolbarLayout = dialog.getLayout();
+        buildToolbar();
+        
+        QSettings settings("Felsic", "FelsicNotes");
+        settings.setValue("toolbar_layout", currentToolbarLayout);
+    }
 }
 
 void MainWindow::togglePreview(bool checked)

@@ -11,6 +11,9 @@
 #include <QLabel>
 #include <QTimer>
 #include <QLineEdit>
+#include <QMap>
+#include <QPair>
+#include <QAction>
 #include "file_filter_model.h"
 
 class PdfGenerator;
@@ -28,13 +31,12 @@ private slots:
     void exportToPdf();
     void onPdfGenerated(bool success, const QString &outputPath);
     void onFileSelected(const QItemSelection &selected, const QItemSelection &deselected);
+    void newFile();
     void saveFile();
     void saveFileAs();
     void openFile();
     void openFolder();
     void togglePreview(bool checked);
-    void toggleWordWrap(bool checked);
-    void toggleHideEmpty(bool checked);
     void zoomIn();
     void zoomOut();
     void showAbout();
@@ -57,10 +59,15 @@ private slots:
 private:
     void setupUi();
     void createActions();
-    void createToolBars();
+    void buildToolbar();
     void applyFontSize();
 
+    // Toolbar logic
+    QMap<QString, QPair<QString, QAction*>> catalog;
+    QStringList currentToolbarLayout;
+
     // UI Elements
+    QToolBar *mainToolBar;
     QSplitter *mainSplitter;
     QLineEdit *searchBox;
     QTreeView *treeView;
@@ -70,39 +77,36 @@ private:
     QTextBrowser *preview;
     QWidget *multiSelectView; // Placeholder for now
 
-    // Actions
-    QAction *actionNew;
-    QAction *actionOpen;
-    QAction *actionOpenFolder;
-    QAction *actionSave;
-    QAction *actionSaveAs;
-    QAction *actionExportPdf;
-    QAction *actionExit;
-    
-    QAction *actionTogglePreview;
-    QAction *actionToggleWrap;
-    QAction *actionToggleHideEmpty;
-    QAction *actionZoomIn;
-    QAction *actionZoomOut;
-    QAction *actionCustomizeToolbar;
-    
-    QAction *actionAbout;
-    
-    // Formatting Actions
-    QAction *actionBold;
-    QAction *actionItalic;
-    QAction *actionLink;
-    QAction *actionCode;
-    QAction *actionUpper;
-    QAction *actionLower;
-    QAction *actionTitle;
-    QAction *actionSentence;
-
     // Models & Helpers
     QFileSystemModel *fileModel;
     FileFilterProxyModel *proxyModel;
     PdfGenerator *pdfGen;
     
+    // UI Action Pointers
+    QAction *newAction;
+    QAction *openAction;
+    QAction *openFolderAction;
+    QAction *exitAction;
+    QAction *saveAction;
+    QAction *saveAsAction;
+    QAction *exportPdfAction;
+    
+    QAction *boldAction;
+    QAction *italicAction;
+    QAction *linkAction;
+    QAction *codeAction;
+    QAction *upperAction;
+    QAction *lowerAction;
+    QAction *titleAction;
+    QAction *sentenceAction;
+    
+    QAction *zoomInAction;
+    QAction *zoomOutAction;
+    QAction *togglePreviewAction;
+    QAction *wrapTextAction;
+    QAction *hideEmptyAction;
+    QAction *aboutAction;
+
     // Status Bar Elements
     QLabel *statsLabel;
     QTimer *statsTimer;

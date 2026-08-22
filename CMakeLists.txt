@@ -22,6 +22,7 @@ set(SOURCES
     src/file_filter_model.h
     src/pdf_generator.cpp
     src/pdf_generator.h
+    src/customize_toolbar_dialog.cpp
 )
 
 # Qt Resources

@@ -65,6 +65,8 @@ void MainWindow::setupUi()
     
     // Toolbar
     mainToolBar = addToolBar(tr("Main Toolbar"));
+    mainToolBar->setObjectName("MainToolBar");
+    mainToolBar->setContextMenuPolicy(Qt::CustomContextMenu);
     mainToolBar->setMovable(false);
     
     // --- Layout setup ---

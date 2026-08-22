@@ -10,6 +10,7 @@
 #include <QStackedWidget>
 #include <QLabel>
 #include <QTimer>
+#include <QLineEdit>
 #include "file_filter_model.h"
 
 class PdfGenerator;
@@ -39,6 +40,7 @@ private slots:
     void showAbout();
     void customizeToolbar();
     void updateStats();
+    void onTitleChanged();
     
     // Formatting Slots
     void insertBold();
@@ -58,6 +60,7 @@ private:
     // UI Elements
     QSplitter *mainSplitter;
     QTreeView *treeView;
+    QLineEdit *titleBox;
     QStackedWidget *stackedWidget;
     QPlainTextEdit *editor;
     QTextBrowser *preview;

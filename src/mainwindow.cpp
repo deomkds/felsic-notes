@@ -12,6 +12,7 @@
 #include <QTextCursor>
 #include <QStatusBar>
 #include <QDateTime>
+#include <QVBoxLayout>
 #include "pdf_generator.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -76,8 +77,25 @@ void MainWindow::setupUi()
     }
     treeView->setHeaderHidden(true);
 
+    // Right side container
+    QWidget *rightContainer = new QWidget(mainSplitter);
+    QVBoxLayout *rightLayout = new QVBoxLayout(rightContainer);
+    rightLayout->setContentsMargins(0, 0, 0, 0);
+    
+    // Title Box
+    titleBox = new QLineEdit(rightContainer);
+    titleBox->setPlaceholderText(tr("Note Title..."));
+    QFont titleFont = titleBox->font();
+    titleFont.setPointSize(16);
+    titleFont.setBold(true);
+    titleBox->setFont(titleFont);
+    titleBox->setStyleSheet("border: none; padding: 10px; background-color: transparent;");
+    connect(titleBox, &QLineEdit::textChanged, this, &MainWindow::onTitleChanged);
+    
+    rightLayout->addWidget(titleBox);
+
     // Right side: Editor & Preview Stacked Widget
-    stackedWidget = new QStackedWidget(mainSplitter);
+    stackedWidget = new QStackedWidget(rightContainer);
     
     // Page 0: Editor
     editor = new QPlainTextEdit(stackedWidget);
@@ -95,6 +113,7 @@ void MainWindow::setupUi()
     stackedWidget->addWidget(multiSelectView);
 
     stackedWidget->setCurrentIndex(0); // Start with editor
+    rightLayout->addWidget(stackedWidget);
 
     setCentralWidget(mainSplitter);
     
@@ -294,6 +313,12 @@ void MainWindow::onFileSelected(const QItemSelection &selected, const QItemSelec
         QFile file(path);
         if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             currentFilePath = path;
+            
+            // Set title box without triggering modification
+            titleBox->blockSignals(true);
+            titleBox->setText(QFileInfo(path).baseName());
+            titleBox->blockSignals(false);
+            
             editor->setPlainText(QString::fromUtf8(file.readAll()));
             file.close();
             updateStats();
@@ -303,14 +328,54 @@ void MainWindow::onFileSelected(const QItemSelection &selected, const QItemSelec
 
 void MainWindow::saveFile()
 {
-    if (currentFilePath.isEmpty()) return;
-    
+    QString newTitle = titleBox->text().trimmed();
+    if (newTitle.isEmpty()) newTitle = "Untitled";
+
+    if (currentFilePath.isEmpty()) {
+        // Not working on a file yet. Target the workspace folder.
+        QSettings settings("Felsic", "FelsicNotes");
+        QString lastWorkspace = settings.value("last_workspace", "").toString();
+        
+        if (!lastWorkspace.isEmpty()) {
+            QString destPath = QDir(lastWorkspace).filePath(newTitle + ".md");
+            if (QFile::exists(destPath)) {
+                QMessageBox::warning(this, tr("Error"), tr("A note with this name already exists in the workspace."));
+                return;
+            }
+            currentFilePath = destPath;
+        } else {
+            saveFileAs();
+            return;
+        }
+    } else {
+        // Working on an existing file
+        QString currentBasename = QFileInfo(currentFilePath).baseName();
+        if (newTitle != currentBasename) {
+            // Name changed visually
+            QString destPath = QFileInfo(currentFilePath).dir().filePath(newTitle + ".md");
+            if (QFile::exists(destPath)) {
+                QMessageBox::warning(this, tr("Error"), tr("A note with this name already exists. Choose another title."));
+                return;
+            }
+            
+            // Try to rename on disk
+            if (QFile::rename(currentFilePath, destPath)) {
+                currentFilePath = destPath;
+            } else {
+                QMessageBox::warning(this, tr("Error"), tr("Could not rename the file on disk."));
+                return;
+            }
+        }
+    }
+
     QFile file(currentFilePath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         file.write(editor->toPlainText().toUtf8());
         file.close();
         editor->document()->setModified(false);
         updateStats();
+        // Update tree view index
+        proxyModel->addToIndex(currentFilePath);
     } else {
         QMessageBox::warning(this, tr("Error"), tr("Could not save the file."));
     }
@@ -341,6 +406,11 @@ void MainWindow::openFile()
     QFile file(path);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         currentFilePath = path;
+        
+        titleBox->blockSignals(true);
+        titleBox->setText(QFileInfo(path).baseName());
+        titleBox->blockSignals(false);
+        
         editor->setPlainText(QString::fromUtf8(file.readAll()));
         file.close();
         updateStats();
@@ -403,9 +473,19 @@ void MainWindow::togglePreview(bool checked)
         // Convert to markdown and switch to preview page
         preview->setMarkdown(editor->toPlainText());
         stackedWidget->setCurrentIndex(1);
+        titleBox->hide();
     } else {
         // Switch back to editor
         stackedWidget->setCurrentIndex(0);
+        titleBox->show();
+    }
+}
+
+void MainWindow::onTitleChanged()
+{
+    if (!editor->document()->isModified()) {
+        editor->document()->setModified(true);
+        updateStats();
     }
 }
 

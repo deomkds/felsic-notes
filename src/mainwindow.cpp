@@ -9,11 +9,12 @@
 #include <QMessageBox>
 #include <QMenuBar>
 #include <QMenu>
-#include <QTextCursor>
 #include <QStatusBar>
 #include <QDateTime>
 #include <QVBoxLayout>
 #include <QSettings>
+#include <QIcon>
+#include <QStyle>
 #include "pdf_generator.h"
 #include "customize_toolbar_dialog.h"
 
@@ -180,39 +181,46 @@ void MainWindow::createActions()
     // File Menu
     QMenu *fileMenu = menuBar()->addMenu(tr("&File"));
     
-    newAction = new QAction(tr("&New File"), this);
+    QIcon newIcon = QIcon::fromTheme("document-new", style()->standardIcon(QStyle::SP_FileIcon));
+    newAction = new QAction(newIcon, tr("&New File"), this);
     newAction->setShortcut(QKeySequence::New);
     connect(newAction, &QAction::triggered, this, &MainWindow::newFile);
     fileMenu->addAction(newAction);
     
-    openAction = new QAction(tr("&Open File..."), this);
+    QIcon openIcon = QIcon::fromTheme("document-open", style()->standardIcon(QStyle::SP_DialogOpenButton));
+    openAction = new QAction(openIcon, tr("&Open File..."), this);
     openAction->setShortcut(QKeySequence::Open);
     connect(openAction, &QAction::triggered, this, &MainWindow::openFile);
     fileMenu->addAction(openAction);
     
-    openFolderAction = new QAction(tr("Open &Folder..."), this);
+    QIcon folderIcon = QIcon::fromTheme("folder-open", style()->standardIcon(QStyle::SP_DirOpenIcon));
+    openFolderAction = new QAction(folderIcon, tr("Open &Folder..."), this);
     connect(openFolderAction, &QAction::triggered, this, &MainWindow::openFolder);
     fileMenu->addAction(openFolderAction);
     
     fileMenu->addSeparator();
     
-    saveAction = new QAction(tr("&Save"), this);
+    QIcon saveIcon = QIcon::fromTheme("document-save", style()->standardIcon(QStyle::SP_DialogSaveButton));
+    saveAction = new QAction(saveIcon, tr("&Save"), this);
     saveAction->setShortcut(QKeySequence::Save);
     connect(saveAction, &QAction::triggered, this, &MainWindow::saveFile);
     fileMenu->addAction(saveAction);
     
-    saveAsAction = new QAction(tr("Save &As..."), this);
+    QIcon saveAsIcon = QIcon::fromTheme("document-save-as", style()->standardIcon(QStyle::SP_DialogSaveButton));
+    saveAsAction = new QAction(saveAsIcon, tr("Save &As..."), this);
     saveAsAction->setShortcut(QKeySequence::SaveAs);
     connect(saveAsAction, &QAction::triggered, this, &MainWindow::saveFileAs);
     fileMenu->addAction(saveAsAction);
     
-    exportPdfAction = new QAction(tr("Export to &PDF"), this);
+    QIcon pdfIcon = QIcon::fromTheme("application-pdf-symbolic", QIcon::fromTheme("application-pdf", style()->standardIcon(QStyle::SP_DriveFDIcon)));
+    exportPdfAction = new QAction(pdfIcon, tr("Export to &PDF"), this);
     connect(exportPdfAction, &QAction::triggered, this, &MainWindow::exportToPdf);
     fileMenu->addAction(exportPdfAction);
     
     fileMenu->addSeparator();
     
-    exitAction = new QAction(tr("E&xit"), this);
+    QIcon exitIcon = QIcon::fromTheme("application-exit", style()->standardIcon(QStyle::SP_DialogCloseButton));
+    exitAction = new QAction(exitIcon, tr("E&xit"), this);
     exitAction->setShortcut(QKeySequence::Quit);
     connect(exitAction, &QAction::triggered, this, &QWidget::close);
     fileMenu->addAction(exitAction);
@@ -220,22 +228,27 @@ void MainWindow::createActions()
     // Edit Menu
     QMenu *editMenu = menuBar()->addMenu(tr("&Edit"));
     
-    boldAction = new QAction(tr("&Bold"), this);
+    QIcon boldIcon = QIcon::fromTheme("format-text-bold");
+    boldAction = new QAction(boldIcon, tr("&Bold"), this);
     boldAction->setShortcut(QKeySequence::Bold);
     connect(boldAction, &QAction::triggered, this, &MainWindow::insertBold);
     editMenu->addAction(boldAction);
     
-    italicAction = new QAction(tr("&Italic"), this);
+    QIcon italicIcon = QIcon::fromTheme("format-text-italic");
+    italicAction = new QAction(italicIcon, tr("&Italic"), this);
     italicAction->setShortcut(QKeySequence::Italic);
     connect(italicAction, &QAction::triggered, this, &MainWindow::insertItalic);
     editMenu->addAction(italicAction);
     
-    linkAction = new QAction(tr("&Link"), this);
+    QIcon linkIcon = QIcon::fromTheme("insert-link", style()->standardIcon(QStyle::SP_ArrowRight));
+    linkAction = new QAction(linkIcon, tr("&Link"), this);
     linkAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_K));
     connect(linkAction, &QAction::triggered, this, &MainWindow::insertLink);
     editMenu->addAction(linkAction);
     
-    codeAction = new QAction(tr("&Code"), this);
+    QIcon codeIcon = QIcon::fromTheme("format-text-code");
+    if (codeIcon.isNull()) codeIcon = QIcon::fromTheme("text-x-script", style()->standardIcon(QStyle::SP_FileIcon));
+    codeAction = new QAction(codeIcon, tr("&Code"), this);
     codeAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
     connect(codeAction, &QAction::triggered, this, &MainWindow::insertCode);
     editMenu->addAction(codeAction);
@@ -264,13 +277,15 @@ void MainWindow::createActions()
     // View Menu
     QMenu *viewMenu = menuBar()->addMenu(tr("&View"));
     
-    togglePreviewAction = new QAction(tr("Toggle &Preview"), this);
+    QIcon previewIcon = QIcon::fromTheme("view-preview", style()->standardIcon(QStyle::SP_DesktopIcon));
+    togglePreviewAction = new QAction(previewIcon, tr("Toggle &Preview"), this);
     togglePreviewAction->setCheckable(true);
     togglePreviewAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_P));
     connect(togglePreviewAction, &QAction::toggled, this, &MainWindow::togglePreview);
     viewMenu->addAction(togglePreviewAction);
     
-    wrapTextAction = new QAction(tr("&Word Wrap"), this);
+    QIcon wrapIcon = QIcon::fromTheme("format-text-wrap", style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+    wrapTextAction = new QAction(wrapIcon, tr("&Word Wrap"), this);
     wrapTextAction->setCheckable(true);
     wrapTextAction->setChecked(true);
     connect(wrapTextAction, &QAction::toggled, this, [this](bool checked) {
@@ -287,12 +302,14 @@ void MainWindow::createActions()
     
     viewMenu->addSeparator();
     
-    zoomInAction = new QAction(tr("Zoom &In"), this);
+    QIcon zoomInIcon = QIcon::fromTheme("zoom-in");
+    zoomInAction = new QAction(zoomInIcon, tr("Zoom &In"), this);
     zoomInAction->setShortcut(QKeySequence::ZoomIn);
     connect(zoomInAction, &QAction::triggered, this, &MainWindow::zoomIn);
     viewMenu->addAction(zoomInAction);
     
-    zoomOutAction = new QAction(tr("Zoom &Out"), this);
+    QIcon zoomOutIcon = QIcon::fromTheme("zoom-out");
+    zoomOutAction = new QAction(zoomOutIcon, tr("Zoom &Out"), this);
     zoomOutAction->setShortcut(QKeySequence::ZoomOut);
     connect(zoomOutAction, &QAction::triggered, this, &MainWindow::zoomOut);
     viewMenu->addAction(zoomOutAction);
@@ -306,7 +323,8 @@ void MainWindow::createActions()
     // Help Menu
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
     
-    aboutAction = new QAction(tr("&About Felsic Notes"), this);
+    QIcon aboutIcon = QIcon::fromTheme("help-about");
+    aboutAction = new QAction(aboutIcon, tr("&About Felsic Notes"), this);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
     helpMenu->addAction(aboutAction);
     

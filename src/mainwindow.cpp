@@ -513,6 +513,9 @@ void MainWindow::saveFile()
         updateStats();
         // Update tree view index
         proxyModel->addToIndex(currentFilePath);
+        
+        // Save config with note
+        saveWorkspaceSettings();
     } else {
         QMessageBox::warning(this, tr("Error"), tr("Could not save the file."));
     }
@@ -581,7 +584,6 @@ void MainWindow::zoomIn()
     if (currentFontSize < 48) {
         currentFontSize += 1;
         applyFontSize();
-        saveWorkspaceSettings();
     }
 }
 
@@ -590,7 +592,6 @@ void MainWindow::zoomOut()
     if (currentFontSize > 6) {
         currentFontSize -= 1;
         applyFontSize();
-        saveWorkspaceSettings();
     }
 }
 
@@ -620,17 +621,6 @@ void MainWindow::customizeToolbar()
     if (dialog.exec() == QDialog::Accepted) {
         currentToolbarLayout = dialog.getLayout();
         buildToolbar();
-        
-        // Save to local config immediately
-        QSettings globalSettings("Felsic", "FelsicNotes");
-        QString currentWorkspace = globalSettings.value("last_workspace", "").toString();
-        if (!currentWorkspace.isEmpty()) {
-            QDir workspaceDir(currentWorkspace);
-            if (!workspaceDir.exists(".felsic")) workspaceDir.mkdir(".felsic");
-            QString configPath = workspaceDir.filePath(".felsic/config.ini");
-            QSettings localSettings(configPath, QSettings::IniFormat);
-            localSettings.setValue("toolbar_layout", currentToolbarLayout);
-        }
     }
 }
 

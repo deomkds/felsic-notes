@@ -43,12 +43,15 @@ MainWindow::MainWindow(QWidget *parent)
     QString lastWorkspace = globalSettings.value("last_workspace", "").toString();
     
     if (!lastWorkspace.isEmpty() && QDir(lastWorkspace).exists()) {
+        fileModel->setRootPath(lastWorkspace);
         proxyModel->updateWorkspaceIndex(lastWorkspace);
         treeView->setRootIndex(proxyModel->mapFromSource(fileModel->index(lastWorkspace)));
         loadWorkspaceSettings(lastWorkspace);
     } else {
-        // Fallback to home dir, but don't auto-index to avoid freezing
-        treeView->setRootIndex(proxyModel->mapFromSource(fileModel->index(QDir::homePath())));
+        // Fallback to home dir
+        QString home = QDir::homePath();
+        fileModel->setRootPath(home);
+        treeView->setRootIndex(proxyModel->mapFromSource(fileModel->index(home)));
     }
 }
 
@@ -90,7 +93,7 @@ void MainWindow::setupUi()
     fileModel->setNameFilters(QStringList() << "*.md");
     fileModel->setNameFilterDisables(false);
     
-    fileModel->setRootPath(""); // Monitor the whole filesystem
+    // We will setRootPath later when a workspace is loaded, to avoid watching the whole OS
     
     proxyModel = new FileFilterProxyModel(this);
     proxyModel->setSourceModel(fileModel);
@@ -533,6 +536,7 @@ void MainWindow::openFolder()
         globalSettings.setValue("last_workspace", dir);
         
         // Update models
+        fileModel->setRootPath(dir);
         proxyModel->updateWorkspaceIndex(dir);
         treeView->setRootIndex(proxyModel->mapFromSource(fileModel->index(dir)));
         

@@ -14,11 +14,17 @@ set(CMAKE_AUTORCC ON)
 # Source files will be added here
 set(SOURCES
     src/main.cpp
+    src/mainwindow.cpp
+    src/mainwindow.h
+    src/workspace_indexer.cpp
+    src/workspace_indexer.h
+    src/file_filter_model.cpp
+    src/file_filter_model.h
 )
 
 # Qt Resources
 set(RESOURCES
-    # resources/resources.qrc
+    resources/resources.qrc
 )
 
 # Translations
@@ -30,7 +36,7 @@ set(TS_FILES
 
 add_executable(FelsicNotes
     ${SOURCES}
-    # ${RESOURCES}
+    ${RESOURCES}
     # ${QM_FILES}
 )
 

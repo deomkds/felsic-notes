@@ -12,3 +12,7 @@ __pycache__/
 # IDEs
 .vscode/
 .idea/
+
+# C++ Build
+build/
+CMakeLists.txt.user

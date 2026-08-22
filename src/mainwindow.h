@@ -28,8 +28,16 @@ private slots:
     void onPdfGenerated(bool success, const QString &outputPath);
     void onFileSelected(const QItemSelection &selected, const QItemSelection &deselected);
     void saveFile();
+    void saveFileAs();
+    void openFile();
     void openFolder();
     void togglePreview(bool checked);
+    void toggleWordWrap(bool checked);
+    void toggleHideEmpty(bool checked);
+    void zoomIn();
+    void zoomOut();
+    void showAbout();
+    void customizeToolbar();
     void updateStats();
     
     // Formatting Slots
@@ -57,10 +65,21 @@ private:
 
     // Actions
     QAction *actionNew;
-    QAction *actionSave;
+    QAction *actionOpen;
     QAction *actionOpenFolder;
+    QAction *actionSave;
+    QAction *actionSaveAs;
     QAction *actionExportPdf;
+    QAction *actionExit;
+    
     QAction *actionTogglePreview;
+    QAction *actionToggleWrap;
+    QAction *actionToggleHideEmpty;
+    QAction *actionZoomIn;
+    QAction *actionZoomOut;
+    QAction *actionCustomizeToolbar;
+    
+    QAction *actionAbout;
     
     // Formatting Actions
     QAction *actionBold;

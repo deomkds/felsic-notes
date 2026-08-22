@@ -578,18 +578,31 @@ void MainWindow::saveFileAs()
 
 void MainWindow::zoomIn()
 {
-    QFont f = editor->font();
-    f.setPointSize(f.pointSize() + 1);
-    editor->setFont(f);
+    if (currentFontSize < 48) {
+        currentFontSize += 1;
+        applyFontSize();
+        saveWorkspaceSettings();
+    }
 }
 
 void MainWindow::zoomOut()
 {
-    QFont f = editor->font();
-    if (f.pointSize() > 6) {
-        f.setPointSize(f.pointSize() - 1);
-        editor->setFont(f);
+    if (currentFontSize > 6) {
+        currentFontSize -= 1;
+        applyFontSize();
+        saveWorkspaceSettings();
     }
+}
+
+void MainWindow::applyFontSize()
+{
+    QFont f = editor->font();
+    f.setPointSize(currentFontSize);
+    editor->setFont(f);
+    
+    QFont fPreview = preview->font();
+    fPreview.setPointSize(currentFontSize);
+    preview->setFont(fPreview);
 }
 
 void MainWindow::showAbout()
@@ -809,6 +822,13 @@ void MainWindow::loadWorkspaceSettings(const QString &workspacePath)
         currentToolbarLayout = savedLayout;
         buildToolbar();
     }
+    
+    // Load font size
+    int savedFontSize = localSettings.value("font_size", 0).toInt();
+    if (savedFontSize > 0) {
+        currentFontSize = savedFontSize;
+        applyFontSize();
+    }
 }
 
 void MainWindow::saveWorkspaceSettings()
@@ -829,6 +849,7 @@ void MainWindow::saveWorkspaceSettings()
     localSettings.setValue("windowState", saveState());
     localSettings.setValue("splitterState", mainSplitter->saveState());
     localSettings.setValue("toolbar_layout", currentToolbarLayout);
+    localSettings.setValue("font_size", currentFontSize);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

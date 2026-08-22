@@ -66,6 +66,8 @@ private:
     void buildToolbar();
     void applyFontSize();
     
+    int currentFontSize = 14;
+    
     void loadWorkspaceSettings(const QString &workspacePath);
     void saveWorkspaceSettings();
 

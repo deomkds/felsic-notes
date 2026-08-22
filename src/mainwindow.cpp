@@ -4,6 +4,10 @@
 #include <QToolBar>
 #include <QIcon>
 #include <QSettings>
+#include <QAction>
+#include <QFileDialog>
+#include <QMessageBox>
+#include "pdf_generator.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -11,6 +15,9 @@ MainWindow::MainWindow(QWidget *parent)
     setupUi();
     createActions();
     createToolBars();
+    
+    pdfGen = new PdfGenerator(this);
+    connect(pdfGen, &PdfGenerator::finished, this, &MainWindow::onPdfGenerated);
     
     // Set up window icon
     setWindowIcon(QIcon(":/window.png"));
@@ -52,16 +59,56 @@ void MainWindow::setupUi()
     preview = new QTextBrowser(editorSplitter);
 
     setCentralWidget(mainSplitter);
+    
+    // Connect Editor text changed to Markdown parser
+    connect(editor, &QPlainTextEdit::textChanged, this, &MainWindow::onEditorTextChanged);
 }
 
 void MainWindow::createActions()
 {
-    // TODO: Add menu actions (New, Open, Save, etc)
+    actionNew = new QAction(QIcon::fromTheme("document-new"), tr("&New"), this);
+    actionNew->setShortcut(QKeySequence::New);
+    
+    actionSave = new QAction(QIcon::fromTheme("document-save"), tr("&Save"), this);
+    actionSave->setShortcut(QKeySequence::Save);
+    
+    actionExportPdf = new QAction(QIcon::fromTheme("document-print"), tr("Export to &PDF..."), this);
+    connect(actionExportPdf, &QAction::triggered, this, &MainWindow::exportToPdf);
 }
 
 void MainWindow::createToolBars()
 {
     QToolBar *mainToolBar = addToolBar(tr("Main Toolbar"));
     mainToolBar->setMovable(false);
-    // TODO: Add toolbar actions
+    
+    mainToolBar->addAction(actionNew);
+    mainToolBar->addAction(actionSave);
+    mainToolBar->addSeparator();
+    mainToolBar->addAction(actionExportPdf);
 }
+
+void MainWindow::onEditorTextChanged()
+{
+    // Qt's QTextBrowser has built-in Markdown support!
+    preview->setMarkdown(editor->toPlainText());
+}
+
+void MainWindow::exportToPdf()
+{
+    QString filePath = QFileDialog::getSaveFileName(this, tr("Export PDF"), QDir::homePath(), tr("PDF Files (*.pdf)"));
+    if (filePath.isEmpty()) return;
+    
+    // Convert current Markdown to HTML for PDF generation
+    QString html = preview->toHtml();
+    pdfGen->generatePdf(html, filePath);
+}
+
+void MainWindow::onPdfGenerated(bool success, const QString &outputPath)
+{
+    if (success) {
+        QMessageBox::information(this, tr("Success"), tr("PDF exported successfully to:\n") + outputPath);
+    } else {
+        QMessageBox::critical(this, tr("Error"), tr("Failed to export PDF to:\n") + outputPath);
+    }
+}
+

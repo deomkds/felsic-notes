@@ -20,6 +20,8 @@ set(SOURCES
     src/workspace_indexer.h
     src/file_filter_model.cpp
     src/file_filter_model.h
+    src/pdf_generator.cpp
+    src/pdf_generator.h
 )
 
 # Qt Resources

@@ -9,6 +9,8 @@
 #include <QFileSystemModel>
 #include "file_filter_model.h"
 
+class PdfGenerator;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -16,6 +18,11 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+
+private slots:
+    void onEditorTextChanged();
+    void exportToPdf();
+    void onPdfGenerated(bool success, const QString &outputPath);
 
 private:
     void setupUi();
@@ -29,9 +36,15 @@ private:
     QPlainTextEdit *editor;
     QTextBrowser *preview;
 
-    // Models
+    // Actions
+    QAction *actionNew;
+    QAction *actionSave;
+    QAction *actionExportPdf;
+
+    // Models & Helpers
     QFileSystemModel *fileModel;
     FileFilterProxyModel *proxyModel;
+    PdfGenerator *pdfGen;
 };
 
 #endif // MAINWINDOW_H

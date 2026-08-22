@@ -24,8 +24,6 @@ MainWindow::MainWindow(QWidget *parent)
     setupUi();
     createActions();
     
-    createActions();
-    
     // Default toolbar layout
     currentToolbarLayout = QStringList{
         "save_file", "save_as", "export_pdf", "spacer",

@@ -473,11 +473,9 @@ void MainWindow::togglePreview(bool checked)
         // Convert to markdown and switch to preview page
         preview->setMarkdown(editor->toPlainText());
         stackedWidget->setCurrentIndex(1);
-        titleBox->hide();
     } else {
         // Switch back to editor
         stackedWidget->setCurrentIndex(0);
-        titleBox->show();
     }
 }
 

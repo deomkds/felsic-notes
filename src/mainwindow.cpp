@@ -48,12 +48,25 @@ MainWindow::~MainWindow()
 void MainWindow::setupUi()
 {
     setWindowTitle(tr("Felsic Notes"));
-    resize(1024, 768);
-
+    // --- Layout setup ---
     mainSplitter = new QSplitter(Qt::Horizontal, this);
     
-    // Left side: Tree view
-    treeView = new QTreeView(mainSplitter);
+    // Left side container (Search + Tree)
+    QWidget *leftContainer = new QWidget(mainSplitter);
+    QVBoxLayout *leftLayout = new QVBoxLayout(leftContainer);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
+    
+    // Search Box
+    searchBox = new QLineEdit(leftContainer);
+    searchBox->setPlaceholderText(tr("Search notes..."));
+    searchBox->setClearButtonEnabled(true);
+    searchBox->setStyleSheet("QLineEdit { padding: 5px; border-radius: 4px; border: 1px solid #ccc; margin: 4px; }");
+    connect(searchBox, &QLineEdit::textChanged, this, &MainWindow::onSearchChanged);
+    leftLayout->addWidget(searchBox);
+    
+    // Tree view
+    treeView = new QTreeView(leftContainer);
+    leftLayout->addWidget(treeView);
     fileModel = new QFileSystemModel(this);
     
     // Crucial: Filter for directories and files, no . and ..
@@ -134,6 +147,12 @@ void MainWindow::setupUi()
     
     connect(editor, &QPlainTextEdit::textChanged, statsTimer, qOverload<>(&QTimer::start));
     updateStats();
+    
+    // Search Timer
+    searchTimer = new QTimer(this);
+    searchTimer->setSingleShot(true);
+    searchTimer->setInterval(300);
+    connect(searchTimer, &QTimer::timeout, this, &MainWindow::applySearch);
 }
 
 void MainWindow::createActions()
@@ -513,6 +532,22 @@ void MainWindow::updateStats()
     QString charText = (chars == 1) ? tr("1 character") : tr("%1 characters").arg(chars);
     
     statsLabel->setText(QString("%1%2  |  %3  |  %4%5").arg(status, dateInfo, wordText, charText, sizeStr));
+}
+
+void MainWindow::onSearchChanged(const QString &text)
+{
+    Q_UNUSED(text);
+    searchTimer->start();
+}
+
+void MainWindow::applySearch()
+{
+    QString text = searchBox->text();
+    // In C++, the proxy model is currently matching BOTH extension (.md) and search text.
+    // However, our QFileSystemModel already strictly filters out non .md files.
+    // So we can just safely search everything against the filename.
+    QRegularExpression regex(text, QRegularExpression::CaseInsensitiveOption);
+    proxyModel->setFilterRegularExpression(regex);
 }
 
 // --- Formatting Slots ---

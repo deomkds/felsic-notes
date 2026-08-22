@@ -41,6 +41,8 @@ private slots:
     void customizeToolbar();
     void updateStats();
     void onTitleChanged();
+    void onSearchChanged(const QString &text);
+    void applySearch();
     
     // Formatting Slots
     void insertBold();
@@ -56,9 +58,11 @@ private:
     void setupUi();
     void createActions();
     void createToolBars();
+    void applyFontSize();
 
     // UI Elements
     QSplitter *mainSplitter;
+    QLineEdit *searchBox;
     QTreeView *treeView;
     QLineEdit *titleBox;
     QStackedWidget *stackedWidget;
@@ -102,6 +106,9 @@ private:
     // Status Bar Elements
     QLabel *statsLabel;
     QTimer *statsTimer;
+    
+    // Search Elements
+    QTimer *searchTimer;
     
     // State
     QString currentFilePath;

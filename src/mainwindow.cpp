@@ -21,6 +21,18 @@ MainWindow::MainWindow(QWidget *parent)
     
     // Set up window icon
     setWindowIcon(QIcon(":/window.png"));
+    
+    // Load global settings
+    QSettings settings("Felsic", "FelsicNotes");
+    QString lastWorkspace = settings.value("last_workspace", "").toString();
+    
+    if (!lastWorkspace.isEmpty() && QDir(lastWorkspace).exists()) {
+        proxyModel->updateWorkspaceIndex(lastWorkspace);
+        treeView->setRootIndex(proxyModel->mapFromSource(fileModel->index(lastWorkspace)));
+    } else {
+        // Fallback to home dir, but don't auto-index to avoid freezing
+        treeView->setRootIndex(proxyModel->mapFromSource(fileModel->index(QDir::homePath())));
+    }
 }
 
 MainWindow::~MainWindow()
@@ -37,17 +49,27 @@ void MainWindow::setupUi()
     // Left side: Tree view
     treeView = new QTreeView(mainSplitter);
     fileModel = new QFileSystemModel(this);
-    fileModel->setRootPath(QDir::homePath()); // Default path for now
+    
+    // Crucial: Filter for directories and files, no . and ..
+    fileModel->setFilter(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
+    fileModel->setNameFilters(QStringList() << "*.md");
+    fileModel->setNameFilterDisables(false);
+    
+    fileModel->setRootPath(""); // Monitor the whole filesystem
     
     proxyModel = new FileFilterProxyModel(this);
     proxyModel->setSourceModel(fileModel);
     
     // Only show Markdown files
     proxyModel->setFilterRegularExpression(QRegularExpression("\\.md$", QRegularExpression::CaseInsensitiveOption));
-    proxyModel->updateWorkspaceIndex(QDir::homePath());
     
     treeView->setModel(proxyModel);
-    treeView->setRootIndex(proxyModel->mapFromSource(fileModel->index(QDir::homePath())));
+    
+    // Hide standard file system columns except Name
+    for (int col = 1; col < 4; ++col) {
+        treeView->hideColumn(col);
+    }
+    treeView->setHeaderHidden(true);
 
     // Right side: Editor & Preview Splitter
     editorSplitter = new QSplitter(Qt::Vertical, mainSplitter);
@@ -76,6 +98,9 @@ void MainWindow::createActions()
     actionSave->setShortcut(QKeySequence::Save);
     connect(actionSave, &QAction::triggered, this, &MainWindow::saveFile);
     
+    actionOpenFolder = new QAction(QIcon::fromTheme("folder-open"), tr("&Open Folder..."), this);
+    connect(actionOpenFolder, &QAction::triggered, this, &MainWindow::openFolder);
+    
     actionExportPdf = new QAction(QIcon::fromTheme("document-print"), tr("Export to &PDF..."), this);
     connect(actionExportPdf, &QAction::triggered, this, &MainWindow::exportToPdf);
 }
@@ -86,6 +111,7 @@ void MainWindow::createToolBars()
     mainToolBar->setMovable(false);
     
     mainToolBar->addAction(actionNew);
+    mainToolBar->addAction(actionOpenFolder);
     mainToolBar->addAction(actionSave);
     mainToolBar->addSeparator();
     mainToolBar->addAction(actionExportPdf);
@@ -145,6 +171,23 @@ void MainWindow::saveFile()
         // Optional: show a small status update or saved indicator
     } else {
         QMessageBox::warning(this, tr("Error"), tr("Could not save the file."));
+    }
+}
+
+void MainWindow::openFolder()
+{
+    QString dir = QFileDialog::getExistingDirectory(this, tr("Open Workspace Folder"),
+                                                 QDir::homePath(),
+                                                 QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+    
+    if (!dir.isEmpty()) {
+        // Save to QSettings
+        QSettings settings("Felsic", "FelsicNotes");
+        settings.setValue("last_workspace", dir);
+        
+        // Update models
+        proxyModel->updateWorkspaceIndex(dir);
+        treeView->setRootIndex(proxyModel->mapFromSource(fileModel->index(dir)));
     }
 }
 

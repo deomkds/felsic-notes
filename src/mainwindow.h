@@ -25,6 +25,7 @@ private slots:
     void onPdfGenerated(bool success, const QString &outputPath);
     void onFileSelected(const QItemSelection &selected, const QItemSelection &deselected);
     void saveFile();
+    void openFolder();
 
 private:
     void setupUi();
@@ -41,6 +42,7 @@ private:
     // Actions
     QAction *actionNew;
     QAction *actionSave;
+    QAction *actionOpenFolder;
     QAction *actionExportPdf;
 
     // Models & Helpers

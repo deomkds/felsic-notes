@@ -7,6 +7,9 @@
 #include <QPlainTextEdit>
 #include <QTextBrowser>
 #include <QFileSystemModel>
+#include <QStackedWidget>
+#include <QLabel>
+#include <QTimer>
 #include "file_filter_model.h"
 
 class PdfGenerator;
@@ -26,6 +29,18 @@ private slots:
     void onFileSelected(const QItemSelection &selected, const QItemSelection &deselected);
     void saveFile();
     void openFolder();
+    void togglePreview(bool checked);
+    void updateStats();
+    
+    // Formatting Slots
+    void insertBold();
+    void insertItalic();
+    void insertLink();
+    void insertCode();
+    void changeCaseUpper();
+    void changeCaseLower();
+    void changeCaseTitle();
+    void changeCaseSentence();
 
 private:
     void setupUi();
@@ -35,20 +50,36 @@ private:
     // UI Elements
     QSplitter *mainSplitter;
     QTreeView *treeView;
-    QSplitter *editorSplitter;
+    QStackedWidget *stackedWidget;
     QPlainTextEdit *editor;
     QTextBrowser *preview;
+    QWidget *multiSelectView; // Placeholder for now
 
     // Actions
     QAction *actionNew;
     QAction *actionSave;
     QAction *actionOpenFolder;
     QAction *actionExportPdf;
+    QAction *actionTogglePreview;
+    
+    // Formatting Actions
+    QAction *actionBold;
+    QAction *actionItalic;
+    QAction *actionLink;
+    QAction *actionCode;
+    QAction *actionUpper;
+    QAction *actionLower;
+    QAction *actionTitle;
+    QAction *actionSentence;
 
     // Models & Helpers
     QFileSystemModel *fileModel;
     FileFilterProxyModel *proxyModel;
     PdfGenerator *pdfGen;
+    
+    // Status Bar Elements
+    QLabel *statsLabel;
+    QTimer *statsTimer;
     
     // State
     QString currentFilePath;

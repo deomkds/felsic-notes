@@ -62,6 +62,9 @@ void MainWindow::setupUi()
     
     // Connect Editor text changed to Markdown parser
     connect(editor, &QPlainTextEdit::textChanged, this, &MainWindow::onEditorTextChanged);
+    
+    // Connect Tree View selection to file opener
+    connect(treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &MainWindow::onFileSelected);
 }
 
 void MainWindow::createActions()
@@ -71,6 +74,7 @@ void MainWindow::createActions()
     
     actionSave = new QAction(QIcon::fromTheme("document-save"), tr("&Save"), this);
     actionSave->setShortcut(QKeySequence::Save);
+    connect(actionSave, &QAction::triggered, this, &MainWindow::saveFile);
     
     actionExportPdf = new QAction(QIcon::fromTheme("document-print"), tr("Export to &PDF..."), this);
     connect(actionExportPdf, &QAction::triggered, this, &MainWindow::exportToPdf);
@@ -109,6 +113,38 @@ void MainWindow::onPdfGenerated(bool success, const QString &outputPath)
         QMessageBox::information(this, tr("Success"), tr("PDF exported successfully to:\n") + outputPath);
     } else {
         QMessageBox::critical(this, tr("Error"), tr("Failed to export PDF to:\n") + outputPath);
+    }
+}
+
+void MainWindow::onFileSelected(const QItemSelection &selected, const QItemSelection &)
+{
+    if (selected.indexes().isEmpty()) return;
+    
+    QModelIndex index = selected.indexes().first();
+    QModelIndex sourceIndex = proxyModel->mapToSource(index);
+    QString path = fileModel->filePath(sourceIndex);
+    
+    if (QFileInfo(path).isFile()) {
+        QFile file(path);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            currentFilePath = path;
+            editor->setPlainText(QString::fromUtf8(file.readAll()));
+            file.close();
+        }
+    }
+}
+
+void MainWindow::saveFile()
+{
+    if (currentFilePath.isEmpty()) return;
+    
+    QFile file(currentFilePath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        file.write(editor->toPlainText().toUtf8());
+        file.close();
+        // Optional: show a small status update or saved indicator
+    } else {
+        QMessageBox::warning(this, tr("Error"), tr("Could not save the file."));
     }
 }
 

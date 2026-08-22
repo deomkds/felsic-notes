@@ -23,6 +23,8 @@ private slots:
     void onEditorTextChanged();
     void exportToPdf();
     void onPdfGenerated(bool success, const QString &outputPath);
+    void onFileSelected(const QItemSelection &selected, const QItemSelection &deselected);
+    void saveFile();
 
 private:
     void setupUi();
@@ -45,6 +47,9 @@ private:
     QFileSystemModel *fileModel;
     FileFilterProxyModel *proxyModel;
     PdfGenerator *pdfGen;
+    
+    // State
+    QString currentFilePath;
 };
 
 #endif // MAINWINDOW_H

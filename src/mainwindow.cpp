@@ -24,18 +24,14 @@ MainWindow::MainWindow(QWidget *parent)
     setupUi();
     createActions();
     
-    QSettings settings("Felsic", "FelsicNotes");
-    QStringList savedLayout = settings.value("toolbar_layout").toStringList();
-    if (savedLayout.isEmpty()) {
-        currentToolbarLayout = QStringList{
-            "save_file", "save_as", "export_pdf", "spacer",
-            "zoom_in", "zoom_out", "separator", "bold", "italic", "link", "code", "spacer",
-            "preview", "wrap_text"
-        };
-    } else {
-        currentToolbarLayout = savedLayout;
-    }
+    createActions();
     
+    // Default toolbar layout
+    currentToolbarLayout = QStringList{
+        "save_file", "save_as", "export_pdf", "spacer",
+        "zoom_in", "zoom_out", "separator", "bold", "italic", "link", "code", "spacer",
+        "preview", "wrap_text"
+    };
     buildToolbar();
     
     pdfGen = new PdfGenerator(this);
@@ -51,6 +47,7 @@ MainWindow::MainWindow(QWidget *parent)
     if (!lastWorkspace.isEmpty() && QDir(lastWorkspace).exists()) {
         proxyModel->updateWorkspaceIndex(lastWorkspace);
         treeView->setRootIndex(proxyModel->mapFromSource(fileModel->index(lastWorkspace)));
+        loadWorkspaceSettings(lastWorkspace);
     } else {
         // Fallback to home dir, but don't auto-index to avoid freezing
         treeView->setRootIndex(proxyModel->mapFromSource(fileModel->index(QDir::homePath())));
@@ -527,13 +524,22 @@ void MainWindow::openFolder()
                                                  QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
     
     if (!dir.isEmpty()) {
-        // Save to QSettings
-        QSettings settings("Felsic", "FelsicNotes");
-        settings.setValue("last_workspace", dir);
+        // Save current workspace settings before switching
+        QSettings globalSettings("Felsic", "FelsicNotes");
+        QString lastWorkspace = globalSettings.value("last_workspace", "").toString();
+        if (!lastWorkspace.isEmpty()) {
+            saveWorkspaceSettings();
+        }
+
+        // Save to QSettings global
+        globalSettings.setValue("last_workspace", dir);
         
         // Update models
         proxyModel->updateWorkspaceIndex(dir);
         treeView->setRootIndex(proxyModel->mapFromSource(fileModel->index(dir)));
+        
+        // Load new settings
+        loadWorkspaceSettings(dir);
     }
 }
 
@@ -600,8 +606,16 @@ void MainWindow::customizeToolbar()
         currentToolbarLayout = dialog.getLayout();
         buildToolbar();
         
-        QSettings settings("Felsic", "FelsicNotes");
-        settings.setValue("toolbar_layout", currentToolbarLayout);
+        // Save to local config immediately
+        QSettings globalSettings("Felsic", "FelsicNotes");
+        QString currentWorkspace = globalSettings.value("last_workspace", "").toString();
+        if (!currentWorkspace.isEmpty()) {
+            QDir workspaceDir(currentWorkspace);
+            if (!workspaceDir.exists(".felsic")) workspaceDir.mkdir(".felsic");
+            QString configPath = workspaceDir.filePath(".felsic/config.ini");
+            QSettings localSettings(configPath, QSettings::IniFormat);
+            localSettings.setValue("toolbar_layout", currentToolbarLayout);
+        }
     }
 }
 
@@ -763,5 +777,75 @@ void MainWindow::changeCaseSentence()
         text[0] = text[0].toUpper();
     }
     cursor.insertText(text);
+}
+
+void MainWindow::loadWorkspaceSettings(const QString &workspacePath)
+{
+    QDir workspaceDir(workspacePath);
+    QString configPath = workspaceDir.filePath(".felsic/config.ini");
+    if (!QFile::exists(configPath)) {
+        return; // Use defaults
+    }
+    
+    QSettings localSettings(configPath, QSettings::IniFormat);
+    
+    // Load geometry
+    QByteArray geometry = localSettings.value("geometry").toByteArray();
+    if (!geometry.isEmpty()) restoreGeometry(geometry);
+    
+    // Load window state
+    QByteArray state = localSettings.value("windowState").toByteArray();
+    if (!state.isEmpty()) restoreState(state);
+    
+    // Load splitter state
+    QByteArray splitterState = localSettings.value("splitterState").toByteArray();
+    if (!splitterState.isEmpty()) mainSplitter->restoreState(splitterState);
+    
+    // Load toolbar
+    QStringList savedLayout = localSettings.value("toolbar_layout").toStringList();
+    if (!savedLayout.isEmpty()) {
+        currentToolbarLayout = savedLayout;
+        buildToolbar();
+    }
+}
+
+void MainWindow::saveWorkspaceSettings()
+{
+    QSettings globalSettings("Felsic", "FelsicNotes");
+    QString currentWorkspace = globalSettings.value("last_workspace", "").toString();
+    if (currentWorkspace.isEmpty()) return;
+    
+    QDir workspaceDir(currentWorkspace);
+    if (!workspaceDir.exists(".felsic")) {
+        workspaceDir.mkdir(".felsic");
+    }
+    
+    QString configPath = workspaceDir.filePath(".felsic/config.ini");
+    QSettings localSettings(configPath, QSettings::IniFormat);
+    
+    localSettings.setValue("geometry", saveGeometry());
+    localSettings.setValue("windowState", saveState());
+    localSettings.setValue("splitterState", mainSplitter->saveState());
+    localSettings.setValue("toolbar_layout", currentToolbarLayout);
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    // Check if there are unsaved changes
+    if (editor->document()->isModified()) {
+        QMessageBox::StandardButton res = QMessageBox::warning(this, tr("Unsaved Changes"),
+            tr("You have unsaved changes. Do you want to save before closing?"),
+            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+        
+        if (res == QMessageBox::Yes) {
+            saveFile();
+        } else if (res == QMessageBox::Cancel) {
+            event->ignore();
+            return;
+        }
+    }
+
+    saveWorkspaceSettings();
+    QMainWindow::closeEvent(event);
 }
 

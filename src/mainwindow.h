@@ -14,6 +14,7 @@
 #include <QMap>
 #include <QPair>
 #include <QAction>
+#include <QCloseEvent>
 #include "file_filter_model.h"
 
 class PdfGenerator;
@@ -25,6 +26,9 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
 
 private slots:
     void onEditorTextChanged();
@@ -61,6 +65,9 @@ private:
     void createActions();
     void buildToolbar();
     void applyFontSize();
+    
+    void loadWorkspaceSettings(const QString &workspacePath);
+    void saveWorkspaceSettings();
 
     // Toolbar logic
     QMap<QString, QPair<QString, QAction*>> catalog;

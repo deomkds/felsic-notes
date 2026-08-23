@@ -15,6 +15,15 @@
 #include <QSettings>
 #include <QIcon>
 #include <QStyle>
+#include <QPair>
+#include <QAction>
+#include <QCloseEvent>
+#include <QMenu>
+#include <QInputDialog>
+#include <QProcess>
+#include <QDesktopServices>
+#include <QUrl>
+#include "file_filter_model.h"
 #include "pdf_generator.h"
 #include "customize_toolbar_dialog.h"
 
@@ -104,6 +113,12 @@ void MainWindow::setupUi()
     proxyModel->setFilterRegularExpression(QRegularExpression("\\.md$", QRegularExpression::CaseInsensitiveOption));
     
     treeView->setModel(proxyModel);
+    treeView->setColumnHidden(1, true); // hide size
+    treeView->setColumnHidden(2, true); // hide type
+    treeView->setColumnHidden(3, true); // hide date modified
+    
+    treeView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(treeView, &QTreeView::customContextMenuRequested, this, &MainWindow::showTreeContextMenu);
     
     // Hide standard file system columns except Name
     for (int col = 1; col < 4; ++col) {
@@ -862,5 +877,387 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
     saveWorkspaceSettings();
     QMainWindow::closeEvent(event);
+}
+
+void MainWindow::showTreeContextMenu(const QPoint &pos)
+{
+    QModelIndex proxyIndex = treeView->indexAt(pos);
+    QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+    
+    QSettings globalSettings("Felsic", "FelsicNotes");
+    QString lastWorkspace = globalSettings.value("last_workspace", "").toString();
+    if (lastWorkspace.isEmpty()) return;
+    
+    QMenu menu;
+    
+    if (sourceIndex.isValid() && !fileModel->isDir(sourceIndex)) {
+        // File context menu
+        QString filePath = fileModel->filePath(sourceIndex);
+        QString baseDir = QFileInfo(filePath).path();
+        
+        QAction *newNoteAction = menu.addAction(tr("New Note..."));
+        connect(newNoteAction, &QAction::triggered, this, [=]() { createNewNote(baseDir); });
+        
+        QAction *newFolderAction = menu.addAction(tr("New Folder..."));
+        connect(newFolderAction, &QAction::triggered, this, [=]() { createNewFolder(baseDir); });
+        
+        menu.addSeparator();
+        
+        QAction *renameAction = menu.addAction(tr("Rename..."));
+        connect(renameAction, &QAction::triggered, this, [=]() { renameNote(filePath); });
+        
+        QAction *moveAction = menu.addAction(tr("Move To..."));
+        connect(moveAction, &QAction::triggered, this, [=]() { moveNote(filePath); });
+        
+        QAction *dupAction = menu.addAction(tr("Duplicate"));
+        connect(dupAction, &QAction::triggered, this, [=]() { duplicateNote(filePath); });
+        
+        menu.addSeparator();
+        
+        QAction *deleteAction = menu.addAction(tr("Delete"));
+        connect(deleteAction, &QAction::triggered, this, [=]() { deleteNote(filePath); });
+        
+        menu.addSeparator();
+        
+        QAction *revealAction = menu.addAction(tr("Reveal in File Explorer"));
+        connect(revealAction, &QAction::triggered, this, [=]() { revealInExplorer(filePath); });
+        
+    } else {
+        // Folder or empty space context menu
+        QString baseDir = lastWorkspace;
+        if (sourceIndex.isValid() && fileModel->isDir(sourceIndex)) {
+            baseDir = fileModel->filePath(sourceIndex);
+        }
+        
+        QAction *newNoteAction = menu.addAction(tr("New Note..."));
+        connect(newNoteAction, &QAction::triggered, this, [=]() { createNewNote(baseDir); });
+        
+        QAction *newFolderAction = menu.addAction(tr("New Folder..."));
+        connect(newFolderAction, &QAction::triggered, this, [=]() { createNewFolder(baseDir); });
+        
+        menu.addSeparator();
+        
+        if (sourceIndex.isValid() && fileModel->isDir(sourceIndex)) {
+            QAction *renameDirAction = menu.addAction(tr("Rename Folder..."));
+            connect(renameDirAction, &QAction::triggered, this, [=]() { renameFolder(baseDir); });
+            
+            QAction *moveDirAction = menu.addAction(tr("Move Folder To..."));
+            connect(moveDirAction, &QAction::triggered, this, [=]() { moveFolder(baseDir); });
+            
+            menu.addSeparator();
+            
+            QAction *expandAction = menu.addAction(tr("Expand All"));
+            connect(expandAction, &QAction::triggered, this, [=]() { expandAll(proxyIndex); });
+            
+            QAction *collapseAction = menu.addAction(tr("Collapse All"));
+            connect(collapseAction, &QAction::triggered, this, [=]() { collapseAll(proxyIndex); });
+            
+            menu.addSeparator();
+            
+            QAction *deleteDirAction = menu.addAction(tr("Delete Folder"));
+            connect(deleteDirAction, &QAction::triggered, this, [=]() { deleteFolder(baseDir); });
+        }
+    }
+    
+    menu.exec(treeView->viewport()->mapToGlobal(pos));
+}
+
+void MainWindow::createNewNote(const QString &baseDir)
+{
+    bool ok;
+    QString text = QInputDialog::getText(this, tr("New Note"), tr("Note Name:"), QLineEdit::Normal, "", &ok);
+    if (ok && !text.trimmed().isEmpty()) {
+        QString filename = text.trimmed();
+        if (!filename.endsWith(".md") && !filename.contains('.')) {
+            filename += ".md";
+        }
+        
+        QString filepath = QDir(baseDir).filePath(filename);
+        if (QFile::exists(filepath)) {
+            QMessageBox::warning(this, tr("Error"), tr("A file with this name already exists."));
+            return;
+        }
+        
+        QFile file(filepath);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            file.write("");
+            file.close();
+            proxyModel->addToIndex(filepath);
+            // Load if current editor is clear or unsaved is handled
+            if (!editor->document()->isModified() || QMessageBox::question(this, tr("Unsaved Changes"), tr("Save current file?")) == QMessageBox::Yes) {
+                if (editor->document()->isModified()) saveFile();
+                
+                // load file
+                if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                    editor->setPlainText(file.readAll());
+                    file.close();
+                    currentFilePath = filepath;
+                    editor->document()->setModified(false);
+                    onTitleChanged();
+                }
+            }
+        } else {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to create note."));
+        }
+    }
+}
+
+void MainWindow::createNewFolder(const QString &baseDir)
+{
+    bool ok;
+    QString text = QInputDialog::getText(this, tr("New Folder"), tr("Folder Name:"), QLineEdit::Normal, "", &ok);
+    if (ok && !text.trimmed().isEmpty()) {
+        QString foldername = text.trimmed();
+        QString filepath = QDir(baseDir).filePath(foldername);
+        
+        if (QFile::exists(filepath)) {
+            QMessageBox::warning(this, tr("Error"), tr("A folder with this name already exists."));
+            return;
+        }
+        
+        QDir dir;
+        if (dir.mkpath(filepath)) {
+            proxyModel->addToIndex(filepath);
+        } else {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to create folder."));
+        }
+    }
+}
+
+void MainWindow::renameNote(const QString &sourcePath)
+{
+    QFileInfo info(sourcePath);
+    bool ok;
+    QString newName = QInputDialog::getText(this, tr("Rename Note"), tr("New Name:"), QLineEdit::Normal, info.fileName(), &ok);
+    
+    if (ok && !newName.trimmed().isEmpty() && newName != info.fileName()) {
+        newName = newName.trimmed();
+        if (!newName.endsWith(".md") && !newName.contains('.')) {
+            newName += ".md";
+        }
+        
+        QString destPath = info.dir().filePath(newName);
+        if (QFile::exists(destPath)) {
+            QMessageBox::warning(this, tr("Error"), tr("A file with this name already exists."));
+            return;
+        }
+        
+        if (QFile::rename(sourcePath, destPath)) {
+            if (currentFilePath == sourcePath) {
+                currentFilePath = destPath;
+                onTitleChanged();
+            }
+        } else {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to rename note."));
+        }
+    }
+}
+
+void MainWindow::moveNote(const QString &sourcePath)
+{
+    QSettings globalSettings("Felsic", "FelsicNotes");
+    QString lastWorkspace = globalSettings.value("last_workspace", QDir::homePath()).toString();
+    QString destFolder = QFileDialog::getExistingDirectory(this, tr("Select Destination Folder"), lastWorkspace);
+    
+    if (!destFolder.isEmpty()) {
+        QFileInfo info(sourcePath);
+        QString destPath = QDir(destFolder).filePath(info.fileName());
+        
+        if (QFile::exists(destPath)) {
+            if (destPath != sourcePath) {
+                QMessageBox::warning(this, tr("Error"), tr("A file with this name already exists in the destination."));
+            }
+            return;
+        }
+        
+        if (QFile::rename(sourcePath, destPath)) {
+            if (currentFilePath == sourcePath) {
+                currentFilePath = destPath;
+            }
+        } else {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to move note."));
+        }
+    }
+}
+
+void MainWindow::duplicateNote(const QString &sourcePath)
+{
+    QFileInfo info(sourcePath);
+    QString baseDir = info.dir().path();
+    QString baseName = info.completeBaseName();
+    QString ext = info.suffix().isEmpty() ? "" : "." + info.suffix();
+    
+    int counter = 1;
+    QString suffix = " (copy)";
+    QString newName;
+    QString destPath;
+    
+    while (true) {
+        newName = baseName + suffix + ext;
+        destPath = QDir(baseDir).filePath(newName);
+        if (!QFile::exists(destPath)) break;
+        counter++;
+        suffix = QString(" (copy %1)").arg(counter);
+    }
+    
+    if (QFile::copy(sourcePath, destPath)) {
+        // Auto indexed by QFileSystemModel
+    } else {
+        QMessageBox::warning(this, tr("Error"), tr("Failed to duplicate note."));
+    }
+}
+
+void MainWindow::deleteNote(const QString &sourcePath)
+{
+    QMessageBox::StandardButton reply = QMessageBox::warning(this, tr("Confirm Delete"), 
+        tr("Are you sure you want to permanently delete:\n%1?").arg(QFileInfo(sourcePath).fileName()),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        
+    if (reply == QMessageBox::Yes) {
+        if (QFile::remove(sourcePath)) {
+            if (currentFilePath == sourcePath) {
+                editor->clear();
+                titleBox->clear();
+                currentFilePath.clear();
+            }
+        } else {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to delete note."));
+        }
+    }
+}
+
+void MainWindow::revealInExplorer(const QString &path)
+{
+#if defined(Q_OS_WIN)
+    QString param = QString("/select,") + QDir::toNativeSeparators(path);
+    QProcess::startDetached("explorer.exe", QStringList() << param);
+#elif defined(Q_OS_MAC)
+    QProcess::startDetached("open", QStringList() << "-R" << path);
+#else
+    // Linux
+    QFileInfo info(path);
+    QString dir = info.isDir() ? path : info.path();
+    QProcess::startDetached("xdg-open", QStringList() << dir);
+#endif
+}
+
+void MainWindow::renameFolder(const QString &sourcePath)
+{
+    QFileInfo info(sourcePath);
+    bool ok;
+    QString newName = QInputDialog::getText(this, tr("Rename Folder"), tr("New Name:"), QLineEdit::Normal, info.fileName(), &ok);
+    
+    if (ok && !newName.trimmed().isEmpty() && newName != info.fileName()) {
+        newName = newName.trimmed();
+        QString destPath = info.dir().filePath(newName);
+        
+        if (QFile::exists(destPath)) {
+            QMessageBox::warning(this, tr("Error"), tr("A folder with this name already exists."));
+            return;
+        }
+        
+        QDir dir;
+        if (dir.rename(sourcePath, destPath)) {
+            proxyModel->renameDirInIndex(sourcePath, destPath);
+            if (!currentFilePath.isEmpty() && (currentFilePath == sourcePath || currentFilePath.startsWith(sourcePath + "/"))) {
+                currentFilePath.replace(0, sourcePath.length(), destPath);
+            }
+        } else {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to rename folder."));
+        }
+    }
+}
+
+void MainWindow::moveFolder(const QString &sourcePath)
+{
+    QSettings globalSettings("Felsic", "FelsicNotes");
+    QString lastWorkspace = globalSettings.value("last_workspace", QDir::homePath()).toString();
+    QString destFolder = QFileDialog::getExistingDirectory(this, tr("Select Destination Folder"), lastWorkspace);
+    
+    if (!destFolder.isEmpty()) {
+        QFileInfo info(sourcePath);
+        QString destPath = QDir(destFolder).filePath(info.fileName());
+        
+        if (QFile::exists(destPath)) {
+            if (destPath != sourcePath) {
+                QMessageBox::warning(this, tr("Error"), tr("A folder with this name already exists in the destination."));
+            }
+            return;
+        }
+        
+        QDir dir;
+        if (dir.rename(sourcePath, destPath)) {
+            proxyModel->renameDirInIndex(sourcePath, destPath);
+            if (!currentFilePath.isEmpty() && (currentFilePath == sourcePath || currentFilePath.startsWith(sourcePath + "/"))) {
+                currentFilePath.replace(0, sourcePath.length(), destPath);
+            }
+        } else {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to move folder."));
+        }
+    }
+}
+
+bool MainWindow::removeDirectoryRecursively(const QString &dirName)
+{
+    bool result = true;
+    QDir dir(dirName);
+    
+    if (dir.exists()) {
+        Q_FOREACH(QFileInfo info, dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
+            if (info.isDir()) {
+                result = removeDirectoryRecursively(info.absoluteFilePath());
+            } else {
+                result = QFile::remove(info.absoluteFilePath());
+            }
+            
+            if (!result) {
+                return result;
+            }
+        }
+        result = dir.rmdir(dirName);
+    }
+    return result;
+}
+
+void MainWindow::deleteFolder(const QString &sourcePath)
+{
+    QMessageBox::StandardButton reply = QMessageBox::warning(this, tr("Confirm Delete"), 
+        tr("Are you sure you want to permanently delete this folder and ALL ITS CONTENTS:\n%1?").arg(QFileInfo(sourcePath).fileName()),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        
+    if (reply == QMessageBox::Yes) {
+        if (removeDirectoryRecursively(sourcePath)) {
+            proxyModel->removeDirFromIndex(sourcePath);
+            if (!currentFilePath.isEmpty() && (currentFilePath == sourcePath || currentFilePath.startsWith(sourcePath + "/"))) {
+                editor->clear();
+                titleBox->clear();
+                currentFilePath.clear();
+            }
+        } else {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to delete folder completely."));
+        }
+    }
+}
+
+void MainWindow::expandAll(const QModelIndex &index)
+{
+    if (index.isValid()) {
+        treeView->expandRecursively(index);
+    }
+}
+
+void MainWindow::collapseAll(const QModelIndex &index)
+{
+    if (index.isValid()) {
+        // Recursive collapse
+        treeView->collapse(index);
+        int rows = proxyModel->rowCount(index);
+        for (int i = 0; i < rows; ++i) {
+            QModelIndex child = proxyModel->index(i, 0, index);
+            if (proxyModel->hasChildren(child)) {
+                collapseAll(child);
+            }
+        }
+    }
 }
 

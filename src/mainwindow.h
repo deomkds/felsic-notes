@@ -45,6 +45,22 @@ private slots:
     void zoomOut();
     void showAbout();
     void customizeToolbar();
+    
+    // Context Menu slots
+    void showTreeContextMenu(const QPoint &pos);
+    void createNewNote(const QString &baseDir);
+    void createNewFolder(const QString &baseDir);
+    void renameNote(const QString &sourcePath);
+    void moveNote(const QString &sourcePath);
+    void duplicateNote(const QString &sourcePath);
+    void deleteNote(const QString &sourcePath);
+    void revealInExplorer(const QString &path);
+    void renameFolder(const QString &sourcePath);
+    void moveFolder(const QString &sourcePath);
+    void deleteFolder(const QString &sourcePath);
+    void expandAll(const QModelIndex &index);
+    void collapseAll(const QModelIndex &index);
+
     void updateStats();
     void onTitleChanged();
     void onSearchChanged(const QString &text);
@@ -70,6 +86,7 @@ private:
     
     void loadWorkspaceSettings(const QString &workspacePath);
     void saveWorkspaceSettings();
+    bool removeDirectoryRecursively(const QString &dirName);
 
     // Toolbar logic
     QMap<QString, QPair<QString, QAction*>> catalog;

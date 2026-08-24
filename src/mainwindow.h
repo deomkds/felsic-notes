@@ -7,8 +7,10 @@
 #include <QPlainTextEdit>
 #include <QTextBrowser>
 #include <QFileSystemModel>
-#include <QStackedWidget>
+#include <QItemSelection>
 #include <QLabel>
+#include <QPushButton>
+#include <QStackedWidget>
 #include <QTimer>
 #include <QLineEdit>
 #include <QMap>
@@ -61,6 +63,12 @@ private slots:
     void expandAll(const QModelIndex &index);
     void collapseAll(const QModelIndex &index);
 
+    // Batch operations
+    void batchGroup();
+    void batchMove();
+    void batchCopy();
+    void batchDelete();
+
     void updateStats();
     void onTitleChanged();
     void onSearchChanged(const QString &text);
@@ -81,12 +89,14 @@ private:
     void createActions();
     void buildToolbar();
     void applyFontSize();
+
     
     int currentFontSize = 14;
     
     void loadWorkspaceSettings(const QString &workspacePath);
     void saveWorkspaceSettings();
     bool removeDirectoryRecursively(const QString &dirName);
+    qint64 getDirectorySize(const QString &path);
 
     // Toolbar logic
     QMap<QString, QPair<QString, QAction*>> catalog;
@@ -101,8 +111,15 @@ private:
     QStackedWidget *stackedWidget;
     QPlainTextEdit *editor;
     QTextBrowser *preview;
-    QWidget *multiSelectView; // Placeholder for now
-
+    
+    // Multi-select UI
+    QWidget *multiSelectView;
+    QLabel *msLabel;
+    QPushButton *btnGroupNewFolder;
+    QPushButton *btnMove;
+    QPushButton *btnCopy;
+    QPushButton *btnDelete;
+    
     // Models & Helpers
     QFileSystemModel *fileModel;
     FileFilterProxyModel *proxyModel;
@@ -142,6 +159,7 @@ private:
     
     // State
     QString currentFilePath;
+    QStringList selectedBatchFiles;
 };
 
 #endif // MAINWINDOW_H

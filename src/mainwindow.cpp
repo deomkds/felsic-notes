@@ -96,6 +96,7 @@ void MainWindow::setupUi()
     
     // Tree view
     treeView = new QTreeView(leftContainer);
+    treeView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     leftLayout->addWidget(treeView);
     fileModel = new QFileSystemModel(this);
     
@@ -154,8 +155,35 @@ void MainWindow::setupUi()
     // Page 1: Preview
     preview = new QTextBrowser(stackedWidget);
     
-    // Page 2: Multi-Select (Empty placeholder for now)
+    // Page 2: Multi-Select
     multiSelectView = new QWidget(stackedWidget);
+    QVBoxLayout *msLayout = new QVBoxLayout(multiSelectView);
+    msLayout->setAlignment(Qt::AlignCenter);
+    
+    msLabel = new QLabel(tr("0 notes selected"), multiSelectView);
+    QFont msFont;
+    msFont.setPointSize(18);
+    msLabel->setFont(msFont);
+    msLabel->setAlignment(Qt::AlignCenter);
+    msLayout->addWidget(msLabel);
+    msLayout->addSpacing(20);
+    
+    btnGroupNewFolder = new QPushButton(tr("New Folder from Selection"), multiSelectView);
+    btnMove = new QPushButton(tr("Move Items..."), multiSelectView);
+    btnCopy = new QPushButton(tr("Copy Items..."), multiSelectView);
+    btnDelete = new QPushButton(tr("Delete Items"), multiSelectView);
+    
+    QList<QPushButton*> msBtns = {btnGroupNewFolder, btnMove, btnCopy, btnDelete};
+    for (QPushButton* btn : msBtns) {
+        btn->setMinimumWidth(250);
+        btn->setMinimumHeight(35);
+        msLayout->addWidget(btn);
+    }
+    
+    connect(btnGroupNewFolder, &QPushButton::clicked, this, &MainWindow::batchGroup);
+    connect(btnMove, &QPushButton::clicked, this, &MainWindow::batchMove);
+    connect(btnCopy, &QPushButton::clicked, this, &MainWindow::batchCopy);
+    connect(btnDelete, &QPushButton::clicked, this, &MainWindow::batchDelete);
 
     stackedWidget->addWidget(editor);
     stackedWidget->addWidget(preview);
@@ -421,35 +449,111 @@ void MainWindow::onPdfGenerated(bool success, const QString &outputPath)
 
 void MainWindow::onFileSelected(const QItemSelection &selected, const QItemSelection &deselected)
 {
+    Q_UNUSED(selected);
     Q_UNUSED(deselected);
-    if (selected.indexes().isEmpty()) return;
     
-    // Reset toggle preview if it's checked
-    if (togglePreviewAction->isChecked()) {
-        togglePreviewAction->setChecked(false);
-        stackedWidget->setCurrentIndex(0);
+    QModelIndexList indexes = treeView->selectionModel()->selectedIndexes();
+    if (indexes.isEmpty()) return;
+    
+    QStringList rawPaths;
+    for (const QModelIndex &idx : indexes) {
+        if (idx.column() == 0) {
+            QModelIndex sourceIdx = proxyModel->mapToSource(idx);
+            rawPaths.append(fileModel->filePath(sourceIdx));
+        }
     }
     
-    QModelIndex index = selected.indexes().first();
-    QFileSystemModel *model = qobject_cast<QFileSystemModel*>(proxyModel->sourceModel());
-    QModelIndex sourceIndex = proxyModel->mapToSource(index);
+    // Filter descendants
+    rawPaths.sort();
+    selectedBatchFiles.clear();
+    for (const QString &p : rawPaths) {
+        bool isDescendant = false;
+        for (const QString &parent : selectedBatchFiles) {
+            if (p.startsWith(parent + "/")) {
+                isDescendant = true;
+                break;
+            }
+        }
+        if (!isDescendant) {
+            selectedBatchFiles.append(p);
+        }
+    }
     
-    if (model->isDir(sourceIndex)) return;
+    qint64 totalSize = 0;
+    for (const QString &path : selectedBatchFiles) {
+        QFileInfo info(path);
+        if (info.isDir()) {
+            totalSize += getDirectorySize(path);
+        } else {
+            totalSize += info.size();
+        }
+    }
     
-    QString path = model->filePath(sourceIndex);
-    if (path.isEmpty()) return;
+    int count = selectedBatchFiles.count();
     
-    QFile file(path);
-    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        currentFilePath = path;
+    if (count > 1 || (count == 1 && QFileInfo(selectedBatchFiles[0]).isDir())) {
+        // Multi-selection or Folder
+        if (editor->document()->isModified()) {
+            QMessageBox::StandardButton res = QMessageBox::warning(this, tr("Unsaved Changes"),
+                tr("You have unsaved changes. Do you want to save?"),
+                QMessageBox::Yes | QMessageBox::No);
+            if (res == QMessageBox::Yes) saveFile();
+        }
         
-        titleBox->blockSignals(true);
-        titleBox->setText(QFileInfo(path).baseName());
-        titleBox->blockSignals(false);
+        editor->clear();
+        currentFilePath.clear();
+        onTitleChanged(); // updates window title since path is clear
         
-        editor->setPlainText(QString::fromUtf8(file.readAll()));
-        file.close();
-        updateStats();
+        stackedWidget->setCurrentIndex(2);
+        titleBox->hide();
+        
+        QString itemText = count == 1 ? tr("1 item") : tr("%1 items").arg(count);
+        msLabel->setText(tr("%1 selected").arg(itemText));
+        
+        QString btnItemText = count == 1 ? tr("Item") : tr("Items");
+        btnMove->setText(tr("Move %1...").arg(btnItemText));
+        btnCopy->setText(tr("Copy %1...").arg(btnItemText));
+        btnDelete->setText(tr("Delete %1").arg(btnItemText));
+        
+        QString sizeStr;
+        if (totalSize < 1024) sizeStr = QString("%1 B").arg(totalSize);
+        else if (totalSize < 1024 * 1024) sizeStr = QString("%1 KB").arg(totalSize / 1024.0, 0, 'f', 1);
+        else sizeStr = QString("%1 MB").arg(totalSize / (1024.0 * 1024.0), 0, 'f', 2);
+        
+        statsLabel->setText(QString("%1 selected  |  Total Size: %2").arg(itemText).arg(sizeStr));
+        
+    } else if (count == 1) {
+        QString path = selectedBatchFiles[0];
+        if (path != currentFilePath) {
+            if (editor->document()->isModified()) {
+                QMessageBox::StandardButton res = QMessageBox::warning(this, tr("Unsaved Changes"),
+                    tr("You have unsaved changes. Do you want to save?"),
+                    QMessageBox::Yes | QMessageBox::No);
+                if (res == QMessageBox::Yes) saveFile();
+            }
+            
+            QFile file(path);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                titleBox->blockSignals(true);
+                titleBox->setText(QFileInfo(path).baseName());
+                titleBox->blockSignals(false);
+                
+                editor->setPlainText(QString::fromUtf8(file.readAll()));
+                file.close();
+                currentFilePath = path;
+                editor->document()->setModified(false);
+                onTitleChanged();
+            } else {
+                QMessageBox::warning(this, tr("Error"), tr("Could not open the file."));
+                return; // don't switch view if open fails
+            }
+        }
+        
+        if (stackedWidget->currentIndex() == 2) {
+            stackedWidget->setCurrentIndex(togglePreviewAction->isChecked() ? 1 : 0);
+            titleBox->show();
+            updateStats();
+        }
     }
 }
 
@@ -1258,6 +1362,168 @@ void MainWindow::collapseAll(const QModelIndex &index)
                 collapseAll(child);
             }
         }
+    }
+}
+
+qint64 MainWindow::getDirectorySize(const QString &path)
+{
+    qint64 size = 0;
+    QDir dir(path);
+    QFileInfoList list = dir.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System);
+    for (const QFileInfo &info : list) {
+        if (info.isDir()) {
+            size += getDirectorySize(info.absoluteFilePath());
+        } else {
+            size += info.size();
+        }
+    }
+    return size;
+}
+
+void MainWindow::batchGroup()
+{
+    if (selectedBatchFiles.isEmpty()) return;
+    
+    QSettings globalSettings("Felsic", "FelsicNotes");
+    QString lastWorkspace = globalSettings.value("last_workspace", "").toString();
+    if (lastWorkspace.isEmpty()) return;
+    
+    bool ok;
+    QString foldername = QInputDialog::getText(this, tr("New Folder from Selection"), tr("Folder Name:"), QLineEdit::Normal, "", &ok);
+    if (ok && !foldername.trimmed().isEmpty()) {
+        foldername = foldername.trimmed();
+        QString destFolder = QDir(lastWorkspace).filePath(foldername);
+        
+        if (QFile::exists(destFolder)) {
+            QMessageBox::warning(this, tr("Error"), tr("A folder with this name already exists."));
+            return;
+        }
+        
+        QDir dir;
+        if (dir.mkpath(destFolder)) {
+            proxyModel->addToIndex(destFolder);
+            int movedCount = 0;
+            for (const QString &path : selectedBatchFiles) {
+                QFileInfo info(path);
+                QString destPath = QDir(destFolder).filePath(info.fileName());
+                if (QFile::rename(path, destPath)) {
+                    if (info.isDir()) proxyModel->renameDirInIndex(path, destPath);
+                    movedCount++;
+                }
+            }
+            QString itemText = movedCount == 1 ? tr("1 item") : tr("%1 items").arg(movedCount);
+            QMessageBox::information(this, tr("Success"), tr("Grouped %1 into %2.").arg(itemText).arg(foldername));
+            treeView->clearSelection();
+        }
+    }
+}
+
+void MainWindow::batchMove()
+{
+    if (selectedBatchFiles.isEmpty()) return;
+    
+    QSettings globalSettings("Felsic", "FelsicNotes");
+    QString lastWorkspace = globalSettings.value("last_workspace", QDir::homePath()).toString();
+    
+    QString destFolder = QFileDialog::getExistingDirectory(this, tr("Select Destination Folder"), lastWorkspace);
+    if (!destFolder.isEmpty()) {
+        int movedCount = 0;
+        for (const QString &path : selectedBatchFiles) {
+            QFileInfo info(path);
+            QString destPath = QDir(destFolder).filePath(info.fileName());
+            
+            if (path == destPath) continue;
+            
+            if (QFile::rename(path, destPath)) {
+                if (info.isDir()) proxyModel->renameDirInIndex(path, destPath);
+                movedCount++;
+            }
+        }
+        QString itemText = movedCount == 1 ? tr("1 item") : tr("%1 items").arg(movedCount);
+        QMessageBox::information(this, tr("Success"), tr("Moved %1.").arg(itemText));
+        treeView->clearSelection();
+    }
+}
+
+void MainWindow::batchCopy()
+{
+    if (selectedBatchFiles.isEmpty()) return;
+    
+    QSettings globalSettings("Felsic", "FelsicNotes");
+    QString lastWorkspace = globalSettings.value("last_workspace", QDir::homePath()).toString();
+    
+    QString destFolder = QFileDialog::getExistingDirectory(this, tr("Select Destination Folder"), lastWorkspace);
+    if (!destFolder.isEmpty()) {
+        int copiedCount = 0;
+        for (const QString &path : selectedBatchFiles) {
+            QFileInfo info(path);
+            QString destPath = QDir(destFolder).filePath(info.fileName());
+            
+            if (path == destPath) continue;
+            
+            if (info.isDir()) {
+                std::function<bool(const QString&, const QString&)> copyRecursively = [&](const QString &srcFilePath, const QString &tgtFilePath) {
+                    QFileInfo srcFileInfo(srcFilePath);
+                    if (srcFileInfo.isDir()) {
+                        QDir targetDir(tgtFilePath);
+                        targetDir.cdUp();
+                        if (!targetDir.mkdir(QFileInfo(tgtFilePath).fileName())) return false;
+                        QDir sourceDir(srcFilePath);
+                        QStringList fileNames = sourceDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System);
+                        for (const QString &fileName : fileNames) {
+                            QString newSrcFilePath = srcFilePath + "/" + fileName;
+                            QString newTgtFilePath = tgtFilePath + "/" + fileName;
+                            if (!copyRecursively(newSrcFilePath, newTgtFilePath)) return false;
+                        }
+                    } else {
+                        if (!QFile::copy(srcFilePath, tgtFilePath)) return false;
+                    }
+                    return true;
+                };
+                
+                if (copyRecursively(path, destPath)) copiedCount++;
+            } else {
+                if (QFile::copy(path, destPath)) {
+                    copiedCount++;
+                }
+            }
+        }
+        QString itemText = copiedCount == 1 ? tr("1 item") : tr("%1 items").arg(copiedCount);
+        QMessageBox::information(this, tr("Success"), tr("Copied %1.").arg(itemText));
+        treeView->clearSelection();
+    }
+}
+
+void MainWindow::batchDelete()
+{
+    if (selectedBatchFiles.isEmpty()) return;
+    
+    int count = selectedBatchFiles.count();
+    QString itemText = count == 1 ? tr("1 item") : tr("%1 items").arg(count);
+    
+    QMessageBox::StandardButton reply = QMessageBox::warning(this, tr("Confirm Delete"), 
+        tr("Are you sure you want to permanently delete %1?").arg(itemText),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        
+    if (reply == QMessageBox::Yes) {
+        int deletedCount = 0;
+        for (const QString &path : selectedBatchFiles) {
+            QFileInfo info(path);
+            if (info.isDir()) {
+                if (removeDirectoryRecursively(path)) {
+                    proxyModel->removeDirFromIndex(path);
+                    deletedCount++;
+                }
+            } else {
+                if (QFile::remove(path)) {
+                    deletedCount++;
+                }
+            }
+        }
+        
+        QString itemTextDel = deletedCount == 1 ? tr("1 item") : tr("%1 items").arg(deletedCount);
+        QMessageBox::information(this, tr("Success"), tr("Deleted %1.").arg(itemTextDel));
+        treeView->clearSelection();
     }
 }
 

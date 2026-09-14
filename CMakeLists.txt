@@ -50,9 +50,35 @@ target_link_libraries(FelsicNotes PRIVATE
     Qt6::WebEngineCore
 )
 
-# CPack setup for future installers
+# Installation
+install(TARGETS FelsicNotes
+    BUNDLE DESTINATION .
+    RUNTIME DESTINATION bin
+)
+
+# Use qt_generate_deploy_app_script to bundle DLLs on Windows automatically when installing/packaging
+if(WIN32)
+    qt_generate_deploy_app_script(
+        TARGET FelsicNotes
+        FILENAME_VARIABLE deploy_script
+        NO_UNSUPPORTED_PLATFORM_ERROR
+    )
+    install(SCRIPT ${deploy_script})
+endif()
+
+# CPack setup for installers/packages
 set(CPACK_PACKAGE_NAME "FelsicNotes")
 set(CPACK_PACKAGE_VENDOR "Deomkds")
 set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A simple markdown editor")
+
+# Windows-specific CPack MSI (WIX) settings
+if(WIN32)
+    set(CPACK_GENERATOR "WIX")
+    set(CPACK_WIX_INSTALL_SCOPE "perUser") # Installs to AppData without UAC/Admin
+    set(CPACK_WIX_UPGRADE_GUID "0d8dbf43-128a-4db3-96b4-245c55ec3f63") # Needed for WIX upgrades
+    set(CPACK_PACKAGE_EXECUTABLES "FelsicNotes" "Felsic Notes") # Creates a Start Menu shortcut
+endif()
+
 include(CPack)

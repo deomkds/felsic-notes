@@ -1,0 +1,120 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers when a version tag is pushed (e.g., v1.0.0)
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.7.*'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+          modules: 'qtwebengine'
+
+      - name: Configure CMake
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Project
+        run: |
+          cd build
+          cmake --build . --config Release
+
+      - name: Run CPack to generate MSI
+        run: |
+          cd build
+          cpack -G WIX -C Release
+
+      - name: Upload Windows MSI Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FelsicNotes-Windows-MSI
+          path: build/*.msi
+
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake fuse libgl1-mesa-dev libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 libxcb-shape0 libnss3 libasound2
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.7.*'
+          host: 'linux'
+          target: 'desktop'
+          modules: 'qtwebengine'
+
+      - name: Configure CMake
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Project
+        run: |
+          cd build
+          cmake --build . --config Release
+
+      - name: Generate AppImage
+        run: |
+          # Download linuxdeploy and qt plugin
+          wget -c -nv "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+          wget -c -nv "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
+          chmod +x linuxdeploy*.AppImage
+
+          cd build
+          
+          # Install to a temporary AppDir
+          make install DESTDIR=AppDir
+          
+          # Initialize environment for the Qt plugin
+          export QMAKE=$(which qmake)
+          export EXTRA_QT_PLUGINS=webengine
+          
+          # Run linuxdeploy
+          ../linuxdeploy-x86_64.AppImage --appdir AppDir -e AppDir/usr/local/bin/FelsicNotes -i ../resources/icon.png -d ../docs/felsicnotes.desktop --plugin qt --output appimage
+          
+          # Rename the AppImage
+          mv FelsicNotes*.AppImage FelsicNotes-x86_64.AppImage
+
+      - name: Upload Linux AppImage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FelsicNotes-Linux-AppImage
+          path: build/FelsicNotes-x86_64.AppImage
+
+  publish-release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/FelsicNotes-Windows-MSI/*.msi
+            artifacts/FelsicNotes-Linux-AppImage/*.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

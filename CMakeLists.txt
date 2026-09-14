@@ -51,10 +51,17 @@ target_link_libraries(FelsicNotes PRIVATE
 )
 
 # Installation
-install(TARGETS FelsicNotes
-    BUNDLE DESTINATION .
-    RUNTIME DESTINATION .
-)
+if(WIN32)
+    install(TARGETS FelsicNotes
+        BUNDLE DESTINATION .
+        RUNTIME DESTINATION .
+    )
+else()
+    install(TARGETS FelsicNotes
+        BUNDLE DESTINATION .
+        RUNTIME DESTINATION bin
+    )
+endif()
 
 # Use qt_generate_deploy_app_script to bundle DLLs on Windows automatically when installing/packaging
 if(WIN32)

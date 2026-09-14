@@ -66,7 +66,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake fuse libgl1-mesa-dev libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 libxcb-shape0 libnss3 libasound2
+          sudo apt-get install -y build-essential cmake fuse libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 libxcb-shape0 libnss3 libasound2
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
@@ -102,6 +102,7 @@ jobs:
           
           # Initialize environment for the Qt plugin
           export QMAKE=$(which qmake)
+          export EXTRA_QT_MODULES=webengine
           export EXTRA_QT_PLUGINS=webengine
           
           # Run linuxdeploy

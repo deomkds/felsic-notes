@@ -37,6 +37,13 @@ jobs:
           cd build
           cpack -G WIX -C Release --verbose
 
+      - name: Print WiX log on failure
+        if: failure()
+        run: |
+          if (Test-Path "build/_CPack_Packages/win64/WIX/wix.log") {
+            Get-Content "build/_CPack_Packages/win64/WIX/wix.log"
+          }
+
       - name: Upload WiX log on failure
         if: failure()
         uses: actions/upload-artifact@v4

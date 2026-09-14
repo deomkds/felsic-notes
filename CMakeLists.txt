@@ -83,9 +83,11 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A simple markdown editor")
 # Windows-specific CPack MSI (WIX) settings
 if(WIN32)
     set(CPACK_GENERATOR "WIX")
+    set(CPACK_WIX_ARCHITECTURE "x64")
     set(CPACK_WIX_INSTALL_SCOPE "perUser") # Installs to AppData without UAC/Admin
     set(CPACK_WIX_UPGRADE_GUID "0d8dbf43-128a-4db3-96b4-245c55ec3f63") # Needed for WIX upgrades
     set(CPACK_PACKAGE_EXECUTABLES "FelsicNotes" "Felsic Notes") # Creates a Start Menu shortcut
+    set(CPACK_WIX_LIGHT_EXTRA_FLAGS "-sval") # Suppress ICE validation checks
 endif()
 
 include(CPack)

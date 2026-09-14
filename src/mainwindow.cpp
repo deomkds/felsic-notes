@@ -424,8 +424,12 @@ void MainWindow::buildToolbar()
 
 void MainWindow::onEditorTextChanged()
 {
+    QString md = editor->toPlainText();
+    // In Markdown, single line breaks are often treated as spaces.
+    // To preserve them as hard line breaks, we add two spaces before every single line break.
+    md.replace(QRegularExpression("([^ \\n])\\n(?!\\n)"), "\\1  \n");
     // Qt's QTextBrowser has built-in Markdown support!
-    preview->setMarkdown(editor->toPlainText());
+    preview->setMarkdown(md);
 }
 
 void MainWindow::exportToPdf()

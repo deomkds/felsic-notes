@@ -10,6 +10,8 @@ int main(int argc, char *argv[])
         QIcon::setThemeName("Papirus");
     }
 
+    app.setWindowIcon(QIcon(":/icon.png"));
+    
     MainWindow window;
     window.show();
 

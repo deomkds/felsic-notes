@@ -1,4 +1,4 @@
-# Felsic Notes
+# <img src="docs/icon.png" width="48" height="48" align="center" alt="Felsic Notes Icon"> Felsic Notes
 
 > **Frictionless notes. Pure productivity.**
 

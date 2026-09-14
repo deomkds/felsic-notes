@@ -752,7 +752,7 @@ void MainWindow::showAbout()
            "<p>A fast, portable, and lightweight Markdown note-taking app.</p>"
            "<p>Built with Qt6 and copious amounts of AI.</p>"
            "<p><a href=\"https://github.com/deomkds/felsic-notes\">GitHub Repository</a></p>"));
-    QPixmap pixmap(":/about_icon.png");
+    QPixmap pixmap(":/icon.png");
     msgBox.setIconPixmap(pixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     msgBox.exec();
 }

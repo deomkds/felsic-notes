@@ -745,11 +745,16 @@ void MainWindow::applyFontSize()
 
 void MainWindow::showAbout()
 {
-    QMessageBox::about(this, tr("About Felsic Notes"),
-        tr("<h3>Felsic Notes</h3>"
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle(tr("About Felsic Notes"));
+    msgBox.setTextFormat(Qt::RichText);
+    msgBox.setText(tr("<h3>Felsic Notes</h3>"
            "<p>A fast, portable, and lightweight Markdown note-taking app.</p>"
            "<p>Built with Qt6 and copious amounts of AI.</p>"
            "<p><a href=\"https://github.com/deomkds/felsic-notes\">GitHub Repository</a></p>"));
+    QPixmap pixmap(":/about_icon.png");
+    msgBox.setIconPixmap(pixmap.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    msgBox.exec();
 }
 
 void MainWindow::customizeToolbar()

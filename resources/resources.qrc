@@ -2,5 +2,6 @@
 <qresource>
     <file>icon.svg</file>
     <file>window.png</file>
+    <file>about_icon.png</file>
 </qresource>
 </RCC>

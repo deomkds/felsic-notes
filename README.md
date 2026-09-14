@@ -23,17 +23,12 @@ This project does not aim to be a fully featured alternative to Obsidian; rather
 
 ## Getting Started
 
-1. **Download**: Grab the latest version for your OS from the [Releases](https://github.com/deomkds/felsic-notes/releases) page. The builds are generated automatically by our CI/CD pipeline!
+1. **Download**: Grab the latest version for your OS from the [Releases](https://github.com/deomkds/felsic-notes/releases) page.
    - **Windows**: Download the `.msi` file. It installs safely without requiring administrator privileges.
    - **Linux**: Download the `.AppImage` file, make it executable, and double-click to run.
 2. **Launch**: Open the application.
 3. **Select Folder**: Point Felsic to your notes folder or Obsidian vault and start writing.
 
-## Roadmap
-
-- [ ] Multi-language support (Translations)
-- [ ] Global search (Search inside note contents)
-- [ ] Improved keyboard navigation
 
 ## License
 

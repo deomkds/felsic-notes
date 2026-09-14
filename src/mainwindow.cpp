@@ -502,7 +502,6 @@ void MainWindow::onFileSelected(const QItemSelection &selected, const QItemSelec
         
         editor->clear();
         currentFilePath.clear();
-        onTitleChanged(); // updates window title since path is clear
         
         stackedWidget->setCurrentIndex(2);
         titleBox->hide();
@@ -542,7 +541,6 @@ void MainWindow::onFileSelected(const QItemSelection &selected, const QItemSelec
                 file.close();
                 currentFilePath = path;
                 editor->document()->setModified(false);
-                onTitleChanged();
             } else {
                 QMessageBox::warning(this, tr("Error"), tr("Could not open the file."));
                 return; // don't switch view if open fails
@@ -1060,6 +1058,11 @@ void MainWindow::showTreeContextMenu(const QPoint &pos)
             
             QAction *deleteDirAction = menu.addAction(tr("Delete Folder"));
             connect(deleteDirAction, &QAction::triggered, this, [=]() { deleteFolder(baseDir); });
+            
+            menu.addSeparator();
+            
+            QAction *revealAction = menu.addAction(tr("Reveal in File Explorer"));
+            connect(revealAction, &QAction::triggered, this, [=]() { revealInExplorer(baseDir); });
         }
     }
     

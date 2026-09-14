@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*' # Triggers when a version tag is pushed (e.g., v1.0.0)
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest

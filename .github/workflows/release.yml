@@ -60,6 +60,7 @@ jobs:
           version: '6.7.*'
           host: 'linux'
           target: 'desktop'
+          arch: 'gcc_64'
           modules: 'qtwebengine'
 
       - name: Configure CMake

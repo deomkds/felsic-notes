@@ -435,6 +435,20 @@ void MainWindow::exportToPdf()
     
     // Convert current Markdown to HTML for PDF generation
     QString html = preview->toHtml();
+    
+    // Inject the note title at the top of the PDF
+    QString title = QFileInfo(currentFilePath).completeBaseName();
+    if (!title.isEmpty()) {
+        QString titleHtml = QString("<h1 style=\"border-bottom: 2px solid #ccc; font-size: 24px; padding-bottom: 10px; margin-bottom: 20px;\">%1</h1>").arg(title.toHtmlEscaped());
+        int bodyIndex = html.indexOf("<body", 0, Qt::CaseInsensitive);
+        if (bodyIndex != -1) {
+            int bodyCloseIndex = html.indexOf(">", bodyIndex);
+            if (bodyCloseIndex != -1) {
+                html.insert(bodyCloseIndex + 1, titleHtml);
+            }
+        }
+    }
+    
     pdfGen->generatePdf(html, filePath);
 }
 

@@ -19,7 +19,7 @@ jobs:
           host: 'windows'
           target: 'desktop'
           arch: 'win64_msvc2019_64'
-          modules: 'qtwebengine'
+          modules: 'qtwebengine qtwebchannel qtpositioning'
 
       - name: Configure CMake
         run: |
@@ -61,7 +61,7 @@ jobs:
           host: 'linux'
           target: 'desktop'
           arch: 'gcc_64'
-          modules: 'qtwebengine'
+          modules: 'qtwebengine qtwebchannel qtpositioning'
 
       - name: Configure CMake
         run: |

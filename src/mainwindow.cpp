@@ -748,7 +748,7 @@ void MainWindow::showAbout()
     QMessageBox msgBox(this);
     msgBox.setWindowTitle(tr("About Felsic Notes"));
     msgBox.setTextFormat(Qt::RichText);
-    msgBox.setText(tr("<h3>Felsic Notes</h3>"
+    msgBox.setText(tr("<h3>Felsic Notes <small>(v1.0.0-alpha)</small></h3>"
            "<p>A fast, portable, and lightweight Markdown note-taking app.</p>"
            "<p>Built with Qt6 and copious amounts of AI.</p>"
            "<p><a href=\"https://github.com/deomkds/felsic-notes\">GitHub Repository</a></p>"));

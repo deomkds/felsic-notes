@@ -53,7 +53,7 @@ target_link_libraries(FelsicNotes PRIVATE
 # Installation
 install(TARGETS FelsicNotes
     BUNDLE DESTINATION .
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION .
 )
 
 # Use qt_generate_deploy_app_script to bundle DLLs on Windows automatically when installing/packaging

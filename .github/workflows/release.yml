@@ -19,7 +19,7 @@ jobs:
           host: 'windows'
           target: 'desktop'
           arch: 'win64_msvc2019_64'
-          modules: 'qtwebengine qtwebchannel qtpositioning'
+          modules: 'qtwebengine qtwebchannel qtpositioning qtserialport'
 
       - name: Configure CMake
         run: |
@@ -35,7 +35,14 @@ jobs:
       - name: Run CPack to generate MSI
         run: |
           cd build
-          cpack -G WIX -C Release
+          cpack -G WIX -C Release --verbose
+
+      - name: Upload WiX log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wix-log
+          path: build/_CPack_Packages/win64/WIX/wix.log
 
       - name: Upload Windows MSI Artifact
         uses: actions/upload-artifact@v4
@@ -61,7 +68,7 @@ jobs:
           host: 'linux'
           target: 'desktop'
           arch: 'linux_gcc_64'
-          modules: 'qtwebengine qtwebchannel qtpositioning'
+          modules: 'qtwebengine qtwebchannel qtpositioning qtserialport'
 
       - name: Configure CMake
         run: |

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Felsic Notes
+Comment=A fast, portable, and lightweight Markdown note-taking app
+Exec=FelsicNotes %F
+Icon=icon
+Terminal=false
+Categories=Office;Utility;TextEditor;
+MimeType=text/markdown;text/plain;

@@ -109,7 +109,7 @@ jobs:
           ../linuxdeploy-x86_64.AppImage --appdir AppDir -e AppDir/usr/local/bin/FelsicNotes -i ../resources/icon.png -d ../docs/felsicnotes.desktop --plugin qt --output appimage
           
           # Rename the AppImage
-          mv FelsicNotes*.AppImage FelsicNotes-x86_64.AppImage
+          mv Felsic*.AppImage FelsicNotes-x86_64.AppImage
 
       - name: Upload Linux AppImage Artifact
         uses: actions/upload-artifact@v4
